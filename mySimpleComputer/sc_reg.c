@@ -1,0 +1,1 @@
+int sc_regInit;
