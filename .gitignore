@@ -1,2 +1,6 @@
 MyProject
 */*.o
+*/*.d
+*/*.gch
+console/memSave
+.vscode/
