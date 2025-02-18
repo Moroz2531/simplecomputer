@@ -1,20 +1,29 @@
-TARGET = MyProject
+TARGET = pr01
 CC = gcc
 
-FLAGS = -Wall -Werror -Wextra
-
 PATH_CONSOLE = ./console/
+PATH_MYSIMPLECOMPUTER = ./mySimpleComputer/
+PATH_INCLUDE = ./include/
 
-all : $(TARGET)
+PATH_TARGET = $(PATH_CONSOLE)$(TARGET)
 
-$(TARGET) : build
-	$(CC) $(FLAGS) $(wildcard $(PATH_CONSOLE)*.o) -o $@ 
+FLAGS = -Wall -Werror -Wextra -I $(PATH_INCLUDE)
 
-build :
-	$(MAKE) -C $(PATH_CONSOLE)
+LIB_MYSIMPLECOMPUTER = $(PATH_MYSIMPLECOMPUTER)libMySimpleComputer.a
+OBJ_CONSOLE = $(PATH_CONSOLE)main.o $(PATH_CONSOLE)print.o
+
+all : build $(PATH_TARGET)
+
+$(PATH_TARGET) : $(OBJ_CONSOLE) $(LIB_MYSIMPLECOMPUTER)
+	$(CC) $(FLAGS) $^ -o $@ 
+
+build:
+	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) all
+	$(MAKE) -C $(PATH_CONSOLE) all 
 
 clean:
+	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) clean
 	$(MAKE) -C $(PATH_CONSOLE) clean
-	rm -rf $(TARGET)
+	rm -rf $(PATH_INCLUDE)*.gch $(PATH_TARGET)
 
-.PHONY: all build clean $(TARGET)
+.PHONY: all build clean
