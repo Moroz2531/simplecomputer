@@ -1,2 +1,7 @@
-MyProject
+console/pr01
 */*.o
+*/*.d
+*/*.gch
+console/memSave
+.vscode/
+*/*.a
