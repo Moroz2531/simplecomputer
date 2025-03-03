@@ -1,5 +1,6 @@
-#include <fcntl.h>
 #include <stdio.h>
+
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -42,23 +43,14 @@ mt_gotoXY (int x, int y)
   const int count_y = get_count_numbers (y);
   char buf_x[count_x + 1], buf_y[count_y + 1];
 
-  snprintf (buf_x, count_x + 1, "%d", x);
-  snprintf (buf_y, count_y + 1, "%d", y);
+  snprintf (buf_x, count_x + 2, "%dH", x);
+  snprintf (buf_y, count_y + 2, "%d;", y);
 
-  char res[count_x + count_y + 5];
-  int i = 0;
-
-  res[i++] = '\e';
-  res[i++] = '[';
-  for (int j = 0; j < count_x; j++, i++)
-    res[i] = buf_x[j];
-  res[i++] = ';';
-  for (int j = 0; j < count_y; j++, i++)
-    res[i] = buf_y[j];
-  res[i++] = 'H';
-  res[i] = '\0';
-
-  if (write (fd, res, count_x + count_y + 4) == -1)
+  if (write (fd, "\e[", 2) == -1)
+    return -1;
+  if (write (fd, buf_y, count_y + 1) == -1)
+    return -1;
+  if (write (fd, buf_x, count_x + 1) == -1)
     return -1;
   close (fd);
 
@@ -89,20 +81,13 @@ mt_setfgcolor (enum colors color)
     return -1;
 
   const int count_color = get_count_numbers (color);
-  char buf[count_color + 1];
+  char buf[count_color + 2];
 
-  snprintf (buf, count_color + 1, "%d", color);
+  snprintf (buf, count_color + 2, "%dm", color);
 
-  char res[count_color + 3];
-  int i = 0;
-
-  res[i++] = '\e';
-  res[i++] = '[';
-  for (int j = 0; j < count_color; j++, i++)
-    res[i] = buf[j];
-  res[i] = '\0';
-
-  if (write (fd, res, count_color + 2) == -1)
+  if (write (fd, "\e[", 2) == -1)
+    return -1;
+  if (write (fd, buf, count_color + 1) == -1)
     return -1;
   close (fd);
 
@@ -117,21 +102,13 @@ mt_setbgcolor (enum colors color)
     return -1;
 
   const int count_color = get_count_numbers (color);
-  char buf[count_color + 1];
+  char buf[count_color + 2];
 
-  snprintf (buf, count_color + 1, "%d", color);
+  snprintf (buf, count_color + 2, "%dm", color);
 
-  char res[count_color + 4];
-  int i = 0;
-
-  res[i++] = '\e';
-  res[i++] = '[';
-  res[i++] = ';';
-  for (int j = 0; j < count_color; j++, i++)
-    res[i] = buf[j];
-  res[i] = '\0';
-
-  if (write (fd, res, count_color + 3) == -1)
+  if (write (fd, "\e[;", 2) == -1)
+    return -1;
+  if (write (fd, buf, count_color + 1) == -1)
     return -1;
   close (fd);
 

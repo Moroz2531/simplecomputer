@@ -3,10 +3,11 @@
 
 enum colors
 {
-  BLACK,
-  RED,
-  GREEN,
-  YELLOW,
+  WHITE = 47,
+  BLACK = 16,
+  RED = 31,
+  GREEN = 40,
+  YELLOW = 11,
 };
 
 int mt_clrscr ();
