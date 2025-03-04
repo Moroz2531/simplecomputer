@@ -48,5 +48,5 @@ sc_commandValidate (int command)
   for (int i = 51; i <= 76; i++)
     if (command == i)
       return 0;
-  return 1;
+  return -1;
 }

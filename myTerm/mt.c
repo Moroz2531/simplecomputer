@@ -151,7 +151,7 @@ mt_delline ()
   if (fd == -1)
     return -1;
 
-  if (write (fd, "\e[2K", 4) == -1)
+  if (write (fd, "\e[K", 4) == -1)
     return -1;
   close (fd);
 
