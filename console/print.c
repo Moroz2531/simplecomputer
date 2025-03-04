@@ -52,13 +52,14 @@ printFlags ()
   char valueError[] = "P0MTE";
   int value;
 
-  mt_gotoXY (96, 2);
+  mt_gotoXY (91, 2);
 
   for (int i = 0; i < 5; i++)
     {
       sc_regGet (i, &value);
       write (fd, value == 0 ? "_" : &valueError[i], 1);
-      write (fd, " ", 1);
+      if (i != 4)
+        write (fd, "  ", 2);
     }
   close (fd);
 }
@@ -112,7 +113,7 @@ printAccumulator ()
 
   char bufCommand[3], bufOperand[3], hex[5];
   int value, sign, command, operand;
-  int x = 70, y = 2;
+  int x = 64, y = 2;
 
   sc_accumulatorGet (&value);
   sc_commandDecode (value, &sign, &command, &operand);
@@ -140,7 +141,105 @@ printCounters ()
   if (fd == -1)
     return;
 
-  int value = 0;
+  int value;
+  char buf[5];
+
   sc_icounterGet (&value);
-  printf ("Значение счётчика команд: %d\n", value);
+
+  snprintf (buf, 5, "%04X", value);
+
+  int icounterX = 73, icounterY = 5;
+
+  mt_gotoXY (icounterX, icounterY);
+
+  write (fd, "IC: ", 4);
+  write (fd, "+", 1);
+  write (fd, buf, 4);
+
+  close (fd);
+}
+
+void
+printTerm (int address, int input)
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  int value, sign, command, operand;
+
+  sc_memoryGet (address, &value);
+  sc_commandDecode (value, &sign, &command, &operand);
+
+  static char buf[5][10];
+  int y[] = { 20, 24 }, x = 69;
+
+  for (int i = 0; i < 4; i++)
+    {
+      for (int j = 0; j < 10; j++)
+        {
+          buf[i][j] = buf[i + 1][j];
+          buf[i + 1][j] = ' ';
+        }
+    }
+
+  if (input == 0)
+    {
+      snprintf (buf[4], 10,
+                address < 100 ? "%02d%c %c%02X%02X" : "%02d%c%c%02X%02X",
+                address, '>', sign == 0 ? '+' : '-', command, operand);
+    }
+  else
+    snprintf (buf[4], 5, "%2d<", address);
+
+  for (int i = y[0], j = 0; i < y[1] + 1; i++, j++)
+    {
+      mt_gotoXY (x, i);
+      mt_delline ();
+      write (fd, buf[j], 9);
+    }
+  close (fd);
+}
+
+void
+printCommand ()
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  int address, value, sign, command, operand;
+  char bufCommand[6], bufOperand[3];
+
+  sc_icounterGet (&address);
+
+  if (address < 0 || address > 127)
+    {
+      mt_gotoXY (92, 5);
+      write (fd, "! + FF : FF", 11);
+      close (fd);
+      return;
+    }
+
+  sc_memoryGet (address, &value);
+  sc_commandDecode (value, &sign, &command, &operand);
+
+  if (sc_commandValidate (command))
+    {
+      mt_gotoXY (92, 5);
+      write (fd, "! + FF : FF", 11);
+      close (fd);
+      return;
+    }
+
+  snprintf (bufCommand, 6, "%02X : ", command);
+  snprintf (bufOperand, 3, "%02X", operand);
+
+  mt_gotoXY (94, 5);
+
+  write (fd, sign == 0 ? "+ " : "- ", 2);
+  write (fd, bufCommand, 5);
+  write (fd, bufOperand, 2);
+
+  close (fd);
 }
