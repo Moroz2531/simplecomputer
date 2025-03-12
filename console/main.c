@@ -1,80 +1,65 @@
 #include <stdio.h>
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include "mySimpleComputer.h"
 #include "print.h"
 
 int
 main ()
 {
+  int fd = open ("/dev/stdout", O_RDWR);
+  if (fd == -1)
+    {
+      printf ("Ошибка! Стандартный поток вывода закрыт\n");
+      return 1;
+    }
+  close (fd);
+
+  int rows, cols;
+
+  mt_getscreensize (&rows, &cols);
+  if (rows < 26 || cols < 104)
+    {
+      printf ("Ошибка! Увеличьте размер терминала\n");
+      return 1;
+    }
+
   sc_memoryInit ();
   sc_regInit ();
   sc_accumulatorInit ();
   sc_icounterInit ();
 
+  mt_clrscr ();
+
   for (int i = 0; i < 10; i++)
     sc_memorySet (i * 10, i % 2 == 0 ? i * 15 : i * 30);
 
-  for (int i = 0; i < 10; i++)
-    printCell (i * 10);
+  sc_memorySet (8, __SHRT_MAX__);
+  sc_icounterSet (8);
 
-  printCell (-1);
-  printCell (120);
-  printCell (128);
+  for (int i = 0; i < 128; i++)
+    printCell (i, BG_WHITE, DEFAULT);
+  printCell (8, BG_BLACK, FG_WHITE);
 
-  printf ("Статус завершения функции sc_memorySet: %d\n",
-          sc_memorySet (128, 50));
-  printf ("Статус завершения функции sc_memorySet: %d\n",
-          sc_memorySet (127, -1));
+  mt_setbgcolor (BG_WHITE);
+
+  int value;
+  sc_memoryGet (8, &value);
 
   printFlags ();
-  sc_regSet (0, 1);
-  sc_regSet (4, 1);
-  printFlags ();
-  for (int i = 0; i < 5; i++)
+  printDecodedCommand (value);
+  printAccumulator ();
+  printCounters ();
+  printCommand ();
+
+  for (int i = 0; i < 7; i++)
     {
-      sc_regSet (i, 1);
+      printTerm (i * 10, i % 2);
     }
-  printFlags ();
-
-  printf ("Статус завершения функции sc_regSet: %d\n", sc_regSet (5, 0));
-  printf ("Статус завершения функции sc_regSet: %d\n", sc_regSet (4, -1));
-  printf ("Статус завершения функции sc_regSet: %d\n", sc_regSet (4, 2));
-
-  printAccumulator ();
-  sc_accumulatorSet (503);
-  printAccumulator ();
-
-  printf ("Статус завершения функции sc_accumulatorSet: %d\n",
-          sc_accumulatorSet (50000));
-
-  printCounters ();
-  sc_icounterSet (28000);
-  printCounters ();
-
-  printf ("Статус завершения функции sc_icounterSet: %d\n",
-          sc_icounterSet (50000));
-
-  int value1 = 0;
-  int sign = 0, command = 0, operand = 0;
-
-  sc_memoryGet (90, &value1);
-  sc_commandDecode (value1, &sign, &command, &operand);
-  printf ("%d %d %d\n", sign, command, operand);
-  printDecodedCommand (value1);
-
-  sc_accumulatorGet (&value1);
-  sc_commandDecode (value1, &sign, &command, &operand);
-  printf ("%d %d %d\n", sign, command, operand);
-  printDecodedCommand (value1);
-
-  sc_commandEncode (1, 69, 81, &value1);
-  sc_commandDecode (value1, &sign, &command, &operand);
-  printf ("%d %d %d\n", sign, command, operand);
-  printDecodedCommand (value1);
-
-  printf ("%d\n", sc_commandValidate (76));
-
-  sc_memorySave ("memSave");
+  mt_gotoXY (0, 26);
 
   return 0;
 }
