@@ -10,5 +10,6 @@ void printAccumulator ();
 void printCounters ();
 void printTerm (int address, int input);
 void printCommand ();
+void printBigCell (int address, int big[34]);
 
 #endif

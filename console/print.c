@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "myBigChars.h"
 #include "mySimpleComputer.h"
 
 #include "print.h"
@@ -195,8 +196,7 @@ printTerm (int address, int input)
   for (int i = y[0], j = 0; i < y[1] + 1; i++, j++)
     {
       mt_gotoXY (x, i);
-      mt_delline ();
-      write (fd, buf[j], 9);
+      write (fd, buf[j], 10);
     }
   close (fd);
 }
@@ -242,4 +242,28 @@ printCommand ()
   write (fd, bufOperand, 2);
 
   close (fd);
+}
+
+void
+printBigCell (int address, int big[34])
+{
+  int value;
+  sc_memoryGet (address, &value);
+
+  int sign, command, operand;
+  sc_commandDecode (value, &sign, &command, &operand);
+
+  switch (sign)
+    {
+    case 0:
+      bc_printbigchar (big + 33, 64, 9, DEFAULT, DEFAULT);
+      break;
+    case 1:
+      bc_printbigchar (big + 31, 64, 9, DEFAULT, DEFAULT);
+      break;
+    }
+  bc_printbigchar (big + (command >> 4), 73, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + (command & 1111), 82, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + (operand >> 4), 91, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + (operand & 1111), 100, 9, DEFAULT, DEFAULT);
 }
