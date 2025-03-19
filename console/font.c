@@ -379,6 +379,8 @@ generate_big_char (int *big, int count)
   for (int i = 0; i < count; i++)
     {
       function_generate_big_char[i](&big[i * 2]);
+      if (7 < i && i < 16)
+      bc_printbigchar(&big[i * 2], 1 + ((i - 6) * 9), 10, DEFAULT,DEFAULT);
     }
   return 0;
 }

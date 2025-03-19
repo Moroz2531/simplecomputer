@@ -80,17 +80,15 @@ bc_box (int x1, int y1, int x2, int y2, enum colors box_fg, enum colors box_bg,
 int
 bc_setbigcharpos (int *big, int x, int y, int value)
 {
-  if (x < 0 || y < 0 || y > COLS || x > ROWS || big == NULL)
+  if (x < 0 || y < 0 || y > 7 || x > 7 || big == NULL)
     return -1;
   if (value != 0 && value != 1)
     return -1;
 
-  *big |= (value << (((ROWS - 1 - x) * 8) + (COLS - 1 - y)));
-
-  if (x * (ROWS - 1) + y <= 31)
-    *big |= (value << (31 - x * (ROWS - 1) + y)); 
+  if (x * (8) + y <= 31)
+    *big |= (value << (31 - (x * 8) - y)); 
   else
-    *(big + 1) |= (value << (63 - x * (ROWS - 1) + y)); 
+    *(big + 1) |= (value << (31 - (x * 8) - y)); 
   
   return 0;
 }
@@ -98,10 +96,13 @@ bc_setbigcharpos (int *big, int x, int y, int value)
 int
 bc_getbigcharpos (int *big, int x, int y, int *value)
 {
-  if (x < 0 || y < 0 || y > COLS || x > ROWS || big == NULL || value == NULL)
+  if (x < 0 || y < 0 || y > 7 || x > 7 || big == NULL || value == NULL)
     return -1;
 
-  *value = (*big >> ((ROWS - 1 - x) * ROWS + COLS - 1 - y)) & 1;
+  if (x * 8 + y <= 31)
+    *value = (*big >> (31 - (x * 8) - y)) & 1;
+  else 
+    *value = (*(big + 1) >> (31 - (x * 8) - y)) & 1;
 
   return 0;
 }
@@ -119,25 +120,15 @@ bc_printbigchar (int *big, int x, int y, enum colors bg, enum colors fg)
   mt_setbgcolor (bg);
   mt_setfgcolor (fg);
 
-  for (int i = 0; i <= 3; i++)
+  for (int i = 0; i <= 7; i++)
     {
       mt_gotoXY (x, y + i);
       for (int j = 0, bit, size; j <= 7; j++)
         {
-          bit = (*big >> (31 - (x * 8) - y)) & 1;
+          bc_getbigcharpos(big, i, j, &bit);
           size = bit == 1 ? 3 : 1;
           write (fd, bit == 1 ? "\u2592" : " ", size);
         }
-    }
-  for (int i = 4; i <= 7; i++)
-    {
-      mt_gotoXY(x, y + i);
-      for (int j = 0, bit, size; j <= 7; j++)
-       {
-          bit = (*(big + 1) >> (63 - (x * 8) - y)) & 1;
-          size = bit == 1 ? 3 : 1;
-          write (fd, bit == 1 ? "\u2592" : " ", size);
-       }
     }
 
   mt_setdefaultcolor ();
