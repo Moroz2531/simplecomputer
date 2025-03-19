@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "myBigChars.h"
 
@@ -385,7 +386,10 @@ generate_big_char (int *big, int count)
 int
 main ()
 {
-  int big[34] = { 0 };
+  int big[34];
+  for (int i = 0; i < 34; i++)
+    big[i] = 0;
+
   int fd = open ("font.bin", O_RDWR);
 
   generate_big_char (big, 17);

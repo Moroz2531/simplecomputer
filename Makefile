@@ -29,7 +29,7 @@ $(PATH_TARGET) : $(OBJ_CONSOLE) $(LIBS)
 font : build $(PATH_FONT)
 
 $(PATH_FONT) : console/font.o $(LIB_MYBIGCHARS) $(LIB_MYTERM)
-	$(CC) $(FLAGS) $^ -o $@
+	$(CC) $(FLAGS) -g $^ -o $@
 
 build:
 	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) all

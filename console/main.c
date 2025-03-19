@@ -10,7 +10,7 @@
 int
 main (int argv, char *argc[])
 {
-  int big[34] = { 0 }, fd, count;
+  int big[34], fd, count;
 
   if (argv >= 2)
     {
@@ -31,8 +31,6 @@ main (int argv, char *argc[])
         }
     }
   bc_bigcharread (fd, big, 34, &count);
-  printf ("Количество прочитанных big char: %ld\n", count / sizeof (int));
-  sleep (2);
 
   close (fd);
 

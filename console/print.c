@@ -262,8 +262,8 @@ printBigCell (int address, int big[34])
       bc_printbigchar (big + 31, 64, 9, DEFAULT, DEFAULT);
       break;
     }
-  bc_printbigchar (big + (command >> 4), 73, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + (command & 1111), 82, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + (operand >> 4), 91, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + (operand & 1111), 100, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big, 73, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + 2, 82, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + 4, 91, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (big + 6, 100, 9, DEFAULT, DEFAULT);
 }

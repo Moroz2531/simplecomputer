@@ -87,6 +87,11 @@ bc_setbigcharpos (int *big, int x, int y, int value)
 
   *big |= (value << (((ROWS - 1 - x) * 8) + (COLS - 1 - y)));
 
+  if (x * (ROWS - 1) + y <= 31)
+    *big |= (value << (31 - x * (ROWS - 1) + y)); 
+  else
+    *(big + 1) |= (value << (63 - x * (ROWS - 1) + y)); 
+  
   return 0;
 }
 
@@ -114,16 +119,25 @@ bc_printbigchar (int *big, int x, int y, enum colors bg, enum colors fg)
   mt_setbgcolor (bg);
   mt_setfgcolor (fg);
 
-  for (int i = ROWS - 1; i >= 0; i--)
+  for (int i = 0; i <= 3; i++)
     {
-      mt_gotoXY (x + i, y);
-
-      for (int j = COLS - 1, bit, size; j >= 0; j--)
+      mt_gotoXY (x, y + i);
+      for (int j = 0, bit, size; j <= 7; j++)
         {
-          bit = (*big >> ((ROWS - 1 - i) * ROWS + COLS - 1 - j)) & 1;
+          bit = (*big >> (31 - (x * 8) - y)) & 1;
           size = bit == 1 ? 3 : 1;
           write (fd, bit == 1 ? "\u2592" : " ", size);
         }
+    }
+  for (int i = 4; i <= 7; i++)
+    {
+      mt_gotoXY(x, y + i);
+      for (int j = 0, bit, size; j <= 7; j++)
+       {
+          bit = (*(big + 1) >> (63 - (x * 8) - y)) & 1;
+          size = bit == 1 ? 3 : 1;
+          write (fd, bit == 1 ? "\u2592" : " ", size);
+       }
     }
 
   mt_setdefaultcolor ();
