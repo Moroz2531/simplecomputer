@@ -85,11 +85,20 @@ bc_setbigcharpos (int *big, int x, int y, int value)
   if (value != 0 && value != 1)
     return -1;
 
-  if (x * (8) + y <= 31)
-    *big |= (value << (31 - (x * 8) - y)); 
+  if (value == 1)
+    {
+      if (x * 8 + y <= 31)
+        *big |= (value << (31 - (x * 8) - y));
+      else
+        *(big + 1) |= (value << (63 - (x * 8) - y));
+    }
   else
-    *(big + 1) |= (value << (31 - (x * 8) - y)); 
-  
+    {
+      if (x * 8 + y <= 31)
+        *big &= ~(1 << (31 - (x * 8) - y));
+      else
+        *(big + 1) &= ~(1 << (63 - (x * 8) - y));
+    }
   return 0;
 }
 
@@ -101,7 +110,7 @@ bc_getbigcharpos (int *big, int x, int y, int *value)
 
   if (x * 8 + y <= 31)
     *value = (*big >> (31 - (x * 8) - y)) & 1;
-  else 
+  else
     *value = (*(big + 1) >> (31 - (x * 8) - y)) & 1;
 
   return 0;
@@ -125,7 +134,7 @@ bc_printbigchar (int *big, int x, int y, enum colors bg, enum colors fg)
       mt_gotoXY (x, y + i);
       for (int j = 0, bit, size; j <= 7; j++)
         {
-          bc_getbigcharpos(big, i, j, &bit);
+          bc_getbigcharpos (big, i, j, &bit);
           size = bit == 1 ? 3 : 1;
           write (fd, bit == 1 ? "\u2592" : " ", size);
         }
