@@ -16,18 +16,37 @@ bc_strlen (char *str)
 
   if (str != NULL)
     {
-      for (int i = 0; str[i] != '\0'; i++)
+      int limit[2] = { 1040, 1103 }; // Russian 'А' and 'я'
+      int numUnicode = 0;
+
+      for (int i = 0, flagUnicode = 0; str[i] != '\0'; i++)
         {
-          if (0 <= (int)str[i] && (int)str[i] < 127)
+          if ((flagUnicode % 2 == 1) && str[i] >= 0)
+            return 0;
+
+          if (str[i] == ' ' || str[i] == '-'
+              || ('0' <= str[i] && str[i] <= '9'))
             count++;
-          else
+          else if (('a' <= str[i] && str[i] <= 'z')
+                   || ('A' <= str[i] && str[i] <= 'Z'))
+            count++;
+          else if (str[i] < 0)
             {
-              count++;
-              i++;
+              numUnicode
+                  |= (flagUnicode % 2) == 1 ? str[i] & 63 : (str[i] & 31) << 6;
+
+              if ((flagUnicode % 2 == 1) && (limit[0] <= numUnicode)
+                  && (numUnicode <= limit[1]))
+                {
+                  count++;
+                  numUnicode = 0;
+                }
+              flagUnicode++;
             }
+          else
+            return 0;
         }
     }
-
   return count;
 }
 
@@ -63,14 +82,15 @@ bc_box (int x1, int y1, int x2, int y2, enum colors box_fg, enum colors box_bg,
       write (fd, "\u2502", 3);
     }
 
-  if (header != NULL && bc_strlen (header) != 0)
+  int countSymbol = bc_strlen (header);
+
+  if (countSymbol != 0)
     {
       mt_setbgcolor (headers_bg);
       mt_setfgcolor (header_fg);
-      mt_gotoXY (x1 + (x2 / 2) - bc_strlen (header) / 2, y1);
+      mt_gotoXY (x1 + (x2 / 2) - countSymbol / 2, y1);
       write (fd, header, strlen (header));
     }
-
   mt_setdefaultcolor ();
   close (fd);
 
@@ -111,7 +131,7 @@ bc_getbigcharpos (int *big, int x, int y, int *value)
   if (x * 8 + y <= 31)
     *value = (*big >> (31 - (x * 8) - y)) & 1;
   else
-    *value = (*(big + 1) >> (31 - (x * 8) - y)) & 1;
+    *value = (*(big + 1) >> (63 - (x * 8) - y)) & 1;
 
   return 0;
 }
