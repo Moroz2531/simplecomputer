@@ -6,9 +6,6 @@
 #include "myBigChars.h"
 #include "myTerm.h"
 
-#define ROWS 8
-#define COLS 8
-
 int
 bc_strlen (char *str)
 {
@@ -16,7 +13,7 @@ bc_strlen (char *str)
 
   if (str != NULL)
     {
-      int limit[2] = { 1040, 1103 }; // Russian 'А' and 'я'
+      int limit[2] = { 0x410, 0x44F }; // Russian 'А' and 'я'
       int numUnicode = 0;
 
       for (int i = 0, flagUnicode = 0; str[i] != '\0'; i++)
@@ -24,11 +21,7 @@ bc_strlen (char *str)
           if ((flagUnicode % 2 == 1) && str[i] >= 0)
             return 0;
 
-          if (str[i] == ' ' || str[i] == '-'
-              || ('0' <= str[i] && str[i] <= '9'))
-            count++;
-          else if (('a' <= str[i] && str[i] <= 'z')
-                   || ('A' <= str[i] && str[i] <= 'Z'))
+          if (0 <= str[i] && str[i] <= 126)
             count++;
           else if (str[i] < 0)
             {
@@ -48,6 +41,33 @@ bc_strlen (char *str)
         }
     }
   return count;
+}
+
+int
+bc_printA (char *str)
+{
+  int numUnicode = 0;
+
+  for (int i = 0, flagUnicode = 0; str[i] != '\0'; i++)
+    {
+      if (0 <= str[i] && str[i] <= 126)
+        printf ("%c", str[i]);
+      else if (str[i] < 0)
+        {
+          numUnicode
+              |= (flagUnicode % 2) == 1 ? str[i] & 63 : (str[i] & 31) << 6;
+
+          if (flagUnicode % 2 == 1)
+            {
+              printf ("\\u%04X", numUnicode);
+              numUnicode = 0;
+            }
+          flagUnicode++;
+        }
+    }
+  printf ("\n");
+
+  return 0;
 }
 
 int
