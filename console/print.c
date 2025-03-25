@@ -245,7 +245,7 @@ printCommand ()
 }
 
 void
-printBigCell (int address, int big[34])
+printBigCell (int address, int big[36])
 {
   int value;
   sc_memoryGet (address, &value);
@@ -256,14 +256,14 @@ printBigCell (int address, int big[34])
   switch (sign)
     {
     case 0:
-      bc_printbigchar (big + 33, 64, 9, DEFAULT, DEFAULT);
+      bc_printbigchar (&big[32], 64, 9, DEFAULT, DEFAULT);
       break;
     case 1:
-      bc_printbigchar (big + 31, 64, 9, DEFAULT, DEFAULT);
+      bc_printbigchar (&big[34], 64, 9, DEFAULT, DEFAULT);
       break;
     }
-  bc_printbigchar (big + 2 * (command >> 4), 73, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + 2 * (command & 1111), 82, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + 2 *(operand >> 4), 91, 9, DEFAULT, DEFAULT);
-  bc_printbigchar (big + 2 * (operand & 1111), 100, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (&big[2 * (command >> 4)], 73, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (&big[2 * (command & 15)], 82, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (&big[2 * (operand >> 4)], 91, 9, DEFAULT, DEFAULT);
+  bc_printbigchar (&big[2 * (operand & 15)], 100, 9, DEFAULT, DEFAULT);
 }

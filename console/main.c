@@ -10,7 +10,7 @@
 int
 main (int argv, char *argc[])
 {
-  int big[34], fd, count;
+  int big[36], fd, count;
 
   if (argv >= 2)
     {
@@ -30,7 +30,7 @@ main (int argv, char *argc[])
           return -1;
         }
     }
-  bc_bigcharread (fd, big, 34, &count);
+  bc_bigcharread (fd, big, 36, &count);
 
   close (fd);
 
@@ -95,6 +95,7 @@ main (int argv, char *argc[])
   printAccumulator ();
   printCounters ();
   printCommand ();
+
   printBigCell (8, big);
 
   for (int i = 0; i < 7; i++)
