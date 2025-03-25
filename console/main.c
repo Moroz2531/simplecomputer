@@ -58,6 +58,24 @@ main (int argv, char *argc[])
 
   mt_clrscr ();
 
+  for (int i = 0; i < 10; i++)
+    sc_memorySet (i * 10, i % 2 == 0 ? i * 15 : i * 30);
+
+  sc_memorySet (8, __SHRT_MAX__);
+  sc_icounterSet (8);
+
+  for (int i = 0; i < 128; i++)
+    printCell (i, BG_WHITE, DEFAULT);
+
+  int value;
+  sc_memoryGet (8, &value);
+
+  printFlags ();
+  printDecodedCommand (value);
+  printAccumulator ();
+  printCounters ();
+  printCommand ();
+
   bc_box (1, 1, 60, 14, DEFAULT, FG_WHITE, " Оперативная память ", BG_RED,
           DEFAULT);
   bc_box (1, 16, 60, 2, DEFAULT, FG_WHITE, " Редактируемая ячейка (формат) ",
@@ -75,36 +93,16 @@ main (int argv, char *argc[])
   bc_box (1, 19, 66, 6, DEFAULT, FG_WHITE, " Кеш процессора ", BG_GREEN,
           FG_WHITE);
 
-  for (int i = 0; i < 10; i++)
-    sc_memorySet (i * 10, i % 2 == 0 ? i * 15 : i * 30);
+  unsigned int address = 8;
 
-  sc_memorySet (8, __SHRT_MAX__);
-  sc_icounterSet (8);
-
-  for (int i = 0; i < 128; i++)
-    printCell (i, BG_WHITE, DEFAULT);
-  printCell (8, BG_BLACK, FG_WHITE);
-
-  mt_setbgcolor (BG_WHITE);
-
-  int value;
-  sc_memoryGet (8, &value);
-
-  printFlags ();
-  printDecodedCommand (value);
-  printAccumulator ();
-  printCounters ();
-  printCommand ();
-
-  printBigCell (8, big);
+  printCell (address, BG_BLACK, FG_WHITE);
+  printBigCell (address, big);
 
   for (int i = 0; i < 7; i++)
     {
       printTerm (i * 10, i % 2);
     }
-
   mt_gotoXY (0, 26);
-  mt_setdefaultcolor ();
 
   return 0;
 }

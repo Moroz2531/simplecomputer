@@ -248,7 +248,8 @@ void
 printBigCell (int address, int big[36])
 {
   int value;
-  sc_memoryGet (address, &value);
+  if (sc_memoryGet (address, &value) == -1)
+    return;
 
   int sign, command, operand;
   sc_commandDecode (value, &sign, &command, &operand);
@@ -266,4 +267,20 @@ printBigCell (int address, int big[36])
   bc_printbigchar (&big[2 * (command & 15)], 82, 9, DEFAULT, DEFAULT);
   bc_printbigchar (&big[2 * (operand >> 4)], 91, 9, DEFAULT, DEFAULT);
   bc_printbigchar (&big[2 * (operand & 15)], 100, 9, DEFAULT, DEFAULT);
+
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+  char bufAddress[4];
+
+  mt_gotoXY (63, 17);
+  mt_setbgcolor (BG_BLUE);
+
+  snprintf (bufAddress, 4, "%03d", address);
+
+  write (fd, "Номер редактируемой ячейки: ", 52);
+  write (fd, bufAddress, 3);
+
+  mt_setdefaultcolor ();
+  close (fd);
 }

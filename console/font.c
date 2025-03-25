@@ -384,6 +384,8 @@ generate_big_F (int *big)
       for (int j = 0; j <= 1; j++)
         bc_setbigcharpos (big, i, j, 1);
     }
+  for (int i = 2; i <= 7; i++)
+    bc_setbigcharpos (big, 3, i, 0);
 
   return 0;
 }
@@ -397,7 +399,7 @@ generate_big_plus (int *big)
     {
       if (i != 3 && i != 4)
         {
-          for (int j = 2; j <= 5; j++)
+          for (int j = 3; j <= 4; j++)
             {
               bc_setbigcharpos (big, i, j, 1);
               bc_setbigcharpos (big, i, j, 1);
