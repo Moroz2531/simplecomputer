@@ -1,33 +1,47 @@
 TARGET = pr01
+FONT = font
 CC = gcc
 
 PATH_CONSOLE = console/
+PATH_MYBIGCHARS = myBigChars/
 PATH_MYSIMPLECOMPUTER = mySimpleComputer/
 PATH_MYTERM = myTerm/
 PATH_INCLUDE = include/
 
 PATH_TARGET = $(PATH_CONSOLE)$(TARGET)
+PATH_FONT = $(PATH_CONSOLE)$(FONT)
 
 FLAGS = -Wall -Werror -Wextra -I $(PATH_INCLUDE)
 
 LIB_MYSIMPLECOMPUTER = $(PATH_MYSIMPLECOMPUTER)libMySimpleComputer.a
 LIB_MYTERM = $(PATH_MYTERM)libMt.a
+LIB_MYBIGCHARS = $(PATH_MYBIGCHARS)libBc.a
+
+LIBS = $(LIB_MYSIMPLECOMPUTER) $(LIB_MYTERM) $(LIB_MYBIGCHARS)
+
 OBJ_CONSOLE = $(PATH_CONSOLE)main.o $(PATH_CONSOLE)print.o
 
 all : build $(PATH_TARGET)
 
-$(PATH_TARGET) : $(OBJ_CONSOLE) $(LIB_MYTERM) $(LIB_MYSIMPLECOMPUTER)
+$(PATH_TARGET) : $(OBJ_CONSOLE) $(LIBS)
 	$(CC) $(FLAGS) $^ -o $@ 
+
+font : build $(PATH_FONT)
+
+$(PATH_FONT) : console/font.o $(LIB_MYBIGCHARS) $(LIB_MYTERM)
+	$(CC) $(FLAGS) -g $^ -o $@
 
 build:
 	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) all
 	$(MAKE) -C $(PATH_MYTERM) all
 	$(MAKE) -C $(PATH_CONSOLE) all 
+	$(MAKE) -C $(PATH_MYBIGCHARS) all
 
 clean:
 	$(MAKE) -C $(PATH_MYTERM) clean
 	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) clean
 	$(MAKE) -C $(PATH_CONSOLE) clean
-	rm -rf $(PATH_INCLUDE)*.gch $(PATH_TARGET)
+	$(MAKE) -C $(PATH_MYBIGCHARS) clean
+	rm -rf $(PATH_INCLUDE)*.gch $(PATH_TARGET) $(PATH_FONT)
 
 .PHONY: all build clean

@@ -101,14 +101,14 @@ mt_setbgcolor (enum colors color)
   if (fd == -1)
     return -1;
 
-  const int count_color = get_count_numbers (color);
-  char buf[count_color + 2];
+  const int size = get_count_numbers (color);
+  char buf[size + 2];
 
-  snprintf (buf, count_color + 2, "%dm", color);
+  snprintf (buf, size + 2, "%dm", color);
 
   if (write (fd, "\e[;", 2) == -1)
     return -1;
-  if (write (fd, buf, count_color + 1) == -1)
+  if (write (fd, buf, size + 1) == -1)
     return -1;
   close (fd);
 
