@@ -72,7 +72,8 @@ rk_mytermregime (int regime, int vtime, int vmin, int echo, int sigint)
 {
   struct termios t;
 
-  t.c_lflag = (regime ? ICANON : 0) | (echo ? ECHO : 0) | (sigint ? ISIG : 0);
+  t.c_lflag = (regime ? ICANON : ~ICANON) | (echo ? ECHO : ~ECHO)
+              | (sigint ? ISIG : ~ISIG);
 
   if (regime == 0)
     {

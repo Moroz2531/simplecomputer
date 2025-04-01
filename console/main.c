@@ -1,9 +1,11 @@
 #include <stdio.h>
 
 #include <fcntl.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "myBigChars.h"
+#include "myReadKey.h"
 #include "mySimpleComputer.h"
 #include "print.h"
 
@@ -45,7 +47,7 @@ main (int argv, char *argc[])
   int rows, cols;
 
   mt_getscreensize (&rows, &cols);
-  if (rows < 26 || cols < 108)
+  if (rows < 27 || cols < 108)
     {
       printf ("Ошибка! Увеличьте размер терминала\n");
       return 1;
@@ -57,6 +59,7 @@ main (int argv, char *argc[])
   sc_icounterInit ();
 
   mt_clrscr ();
+  mt_setcursorvisible (1);
 
   for (int i = 0; i < 10; i++)
     sc_memorySet (i * 10, i % 2 == 0 ? i * 15 : i * 30);
@@ -65,7 +68,7 @@ main (int argv, char *argc[])
   sc_icounterSet (8);
 
   for (int i = 0; i < 128; i++)
-    printCell (i, BG_WHITE, DEFAULT);
+    printCell (i, DEFAULT, DEFAULT);
 
   int value;
   sc_memoryGet (8, &value);
@@ -93,16 +96,80 @@ main (int argv, char *argc[])
   bc_box (1, 19, 66, 6, DEFAULT, FG_WHITE, " Кеш процессора ", BG_GREEN,
           FG_WHITE);
 
-  unsigned int address = 8;
+  unsigned int address = 0;
+  enum keys key;
+  struct termios t;
 
-  printCell (address, BG_BLACK, FG_WHITE);
+  tcgetattr (STDIN_FILENO, &t);
+
+  printCell (address, FG_WHITE, BG_BLACK);
   printBigCell (address, big);
 
-  for (int i = 0; i < 7; i++)
+  sc_memoryGet (address, &value);
+  printDecodedCommand (value);
+
+  if (rk_mytermregime (0, 0, 0, 0, 0))
+    return -1;
+
+  while (1)
     {
-      printTerm (i * 10, i % 2);
+      if (rk_readkey (&key))
+        return -1;
+
+      if (key == key_esape)
+        break;
+
+      switch (key)
+        {
+        case key_enter:
+          rk_readvalue (&value, 100);
+          sc_memorySet (address, value);
+          break;
+
+        case key_up:
+          printCell (address, DEFAULT, DEFAULT);
+          address -= 10;
+          if (address > 127)
+            {
+              address = (address % 128) + 2;
+              if (address == 128 || address == 129)
+                address -= 10;
+            }
+          break;
+
+        case key_down:
+          printCell (address, DEFAULT, DEFAULT);
+          address += 10;
+          if (address >= 128 && address < 130)
+            address = 8 + (address & 1);
+          else if (address >= 130)
+            address = (address & 0XF) - 2;
+          break;
+
+        case key_left:
+          printCell (address, DEFAULT, DEFAULT);
+          address--;
+          address %= 128;
+          break;
+
+        case key_right:
+          printCell (address, DEFAULT, DEFAULT);
+          address++;
+          address %= 128;
+          break;
+
+        default:
+          break;
+        };
+      printCell (address, FG_WHITE, BG_BLACK);
+      // printBigCell (address, big);
+      // sc_memoryGet (address, &value);
+      // printDecodedCommand (value);
     }
-  mt_gotoXY (0, 26);
+
+  tcsetattr (STDIN_FILENO, TCSAFLUSH, &t);
+  mt_setcursorvisible (0);
+  mt_gotoXY (0, 27);
 
   return 0;
 }
