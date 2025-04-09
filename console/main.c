@@ -73,6 +73,7 @@ file_save_load (enum keys key)
     case key_s:
       sc_memorySave (filename);
     default:
+      break;
     }
   free (filename);
   mt_gotoXY (0, 26);
@@ -300,6 +301,7 @@ main (int argv, char *argc[])
           break;
 
         default:
+          break;
         };
     }
   tcsetattr (STDIN_FILENO, TCSAFLUSH, &t);
