@@ -4,8 +4,9 @@
 
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
+#include "myTerm.h"
 
-struct termios oldt;
+static struct termios oldt;
 
 int
 rk_readkey (enum keys *key)
@@ -46,9 +47,9 @@ rk_readkey (enum keys *key)
   else if (strcmp (k, "i") == 0 || strcmp (k, "I") == 0)
     *key = key_i;
   else if (strcmp (k, "r") == 0 || strcmp (k, "R") == 0)
-    *key = key_r;
+    *key = key__r;
   else if (strcmp (k, "t") == 0 || strcmp (k, "T") == 0)
-    *key = key_t;
+    *key = key__t;
   else
     *key = key_unknown;
 
@@ -70,10 +71,13 @@ rk_mytermrestore ()
 int
 rk_mytermregime (int regime, int vtime, int vmin, int echo, int sigint)
 {
-  struct termios t;
+  static struct termios t;
 
-  t.c_lflag = (regime ? ICANON : ~ICANON) | (echo ? ECHO : ~ECHO)
-              | (sigint ? ISIG : ~ISIG);
+  if (tcgetattr (STDIN_FILENO, &t) == -1)
+    return -1;
+
+  t.c_lflag &= ~(ICANON | ECHO | ISIG);
+  t.c_lflag |= (regime ? ICANON : 0) | (echo ? ECHO : 0) | (sigint ? ISIG : 0);
 
   if (regime == 0)
     {
@@ -92,36 +96,46 @@ rk_readvalue (int *value, int timeout)
 
   char buf[6];
 
+  mt_setcursorvisible (0);
   read (STDIN_FILENO, buf, 5);
+  mt_setcursorvisible (1);
 
   if (rk_mytermrestore ())
     return -1;
 
-  if (buf[0] != '+' || buf[1] != '-')
-    return -1;
+  int command[3] = { 0, 0, 0 };
 
-  int command[3];
-  int numbers[16][2]
-      = { { '0', 0 },   { '1', 1 },   { '2', 2 },   { '3', 3 },
-          { '4', 4 },   { '5', 5 },   { '6', 6 },   { '7', 7 },
-          { '8', 8 },   { '9', 9 },   { 'A', 0XA }, { 'B', 0XB },
-          { 'C', 0XC }, { 'D', 0XD }, { 'E', 0XE }, { 'F', 0XF } };
+  switch (buf[0])
+    {
+    case '+':
+      command[0] = 0;
+      break;
+    case '-':
+      command[0] = 1;
+      break;
+    default:
+      return -1;
+    }
+  int numbers[16][2] = { { '0', 0 },  { '1', 1 },  { '2', 2 },  { '3', 3 },
+                         { '4', 4 },  { '5', 5 },  { '6', 6 },  { '7', 7 },
+                         { '8', 8 },  { '9', 9 },  { 'A', 10 }, { 'B', 11 },
+                         { 'C', 12 }, { 'D', 13 }, { 'E', 14 }, { 'F', 15 } };
 
   for (int i = 1, flag_num; i < 5; i++)
     {
       flag_num = 0;
       for (int j = 0; j < 16; j++)
         {
-          if (buf[i] == numbers[i][0])
+          if (buf[i] == numbers[j][0])
             {
-              command[1 + ((i - 1) >> 1)] = numbers[i][1] << (4 * (i % 2));
+              command[1 + ((i - 1) >> 1)] |= numbers[j][1] << (4 * (i % 2));
               flag_num = 1;
+              break;
             }
         }
       if (!flag_num)
         return -1;
     }
-
   if (sc_commandEncode (command[0], command[1], command[2], value))
     return -1;
   return 0;

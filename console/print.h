@@ -11,5 +11,7 @@ void printCounters ();
 void printTerm (int address, int input);
 void printCommand ();
 void printBigCell (int address, int big[36]);
+int printClearCell (int x, int y);
+void printHelpInformation ();
 
 #endif

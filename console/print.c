@@ -142,20 +142,23 @@ printCounters ()
   if (fd == -1)
     return;
 
-  int value;
-  char buf[5];
+  int value, sign, command, operand;
+  char bufCommand[3], bufOperand[3];
 
   sc_icounterGet (&value);
+  sc_commandDecode (value, &sign, &command, &operand);
+  snprintf (bufCommand, 3, "%02X", command);
+  snprintf (bufOperand, 3, "%02X", operand);
 
-  snprintf (buf, 5, "%04X", value);
+  mt_gotoXY (63, 5);
+  write (fd, "T: 00", 5);
 
-  int icounterX = 73, icounterY = 5;
-
-  mt_gotoXY (icounterX, icounterY);
+  mt_gotoXY (73, 5);
 
   write (fd, "IC: ", 4);
-  write (fd, "+", 1);
-  write (fd, buf, 4);
+  write (fd, sign == 0 ? "+" : "-", 1);
+  write (fd, bufCommand, 2);
+  write (fd, bufOperand, 2);
 
   close (fd);
 }
@@ -283,4 +286,46 @@ printBigCell (int address, int big[36])
 
   mt_setdefaultcolor ();
   close (fd);
+}
+
+void
+printHelpInformation ()
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  mt_gotoXY (80, 20);
+  write (fd, "l - load", 8);
+  mt_gotoXY (90, 20);
+  write (fd, "s - save", 8);
+  mt_gotoXY (100, 20);
+  write (fd, "i - reset", 9);
+  mt_gotoXY (80, 21);
+  write (fd, "r - run", 7);
+  mt_gotoXY (90, 21);
+  write (fd, "t - step", 8);
+  mt_gotoXY (80, 22);
+  write (fd, "ESC - выход", 16);
+  mt_gotoXY (80, 23);
+  write (fd, "F5 - accumulator", 16);
+  mt_gotoXY (80, 24);
+  write (fd, "F6 - instruction counter", 24);
+
+  close (fd);
+}
+
+int
+printClearCell (int x, int y)
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return -1;
+
+  mt_gotoXY (x, y);
+  write (fd, "     ", 5);
+  close (fd);
+  mt_gotoXY (x, y);
+
+  return 0;
 }
