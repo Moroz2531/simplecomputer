@@ -246,8 +246,7 @@ main (int argv, char *argc[])
           break;
 
         case key_enter:
-          int x = 2 + (address % 10 * 6), y = 2 + address / 10;
-          printClearCell (x, y);
+          printClearCell (2 + (address % 10 * 6), 2 + address / 10);
           sc_memoryGet (address, &value);
           rk_readvalue (&value, 100);
           sc_memorySet (address, value);
