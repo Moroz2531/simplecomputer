@@ -79,6 +79,8 @@ bc_box (int x1, int y1, int x2, int y2, enum colors box_fg, enum colors box_bg,
   if (fd == -1)
     return -1;
 
+  write (fd, "\e(0", 3);
+
   mt_setbgcolor (box_bg);
   mt_setfgcolor (box_fg);
   mt_gotoXY (x1, y1);
@@ -112,6 +114,7 @@ bc_box (int x1, int y1, int x2, int y2, enum colors box_fg, enum colors box_bg,
       mt_gotoXY (x1 + (x2 / 2) - countSymbol / 2, y1);
       write (fd, header, strlen (header));
     }
+  write (fd, "\e(B", 3);
   mt_setdefaultcolor ();
   close (fd);
 
@@ -167,6 +170,8 @@ bc_printbigchar (int *big, int x, int y, enum colors bg, enum colors fg)
   if (fd == -1)
     return -1;
 
+  write (fd, "\e(0", 3);
+
   mt_setbgcolor (bg);
   mt_setfgcolor (fg);
 
@@ -180,6 +185,8 @@ bc_printbigchar (int *big, int x, int y, enum colors bg, enum colors fg)
           write (fd, bit == 1 ? "\u2592" : " ", size);
         }
     }
+
+  write (fd, "\e(B", 3);
 
   mt_setdefaultcolor ();
   close (fd);
