@@ -7,6 +7,26 @@ int sc_accumulatorGet (int *value);
 
 #ifndef SC_COMMAND_H
 #define SC_COMMAND_H
+enum
+{
+  NOP = 0,
+  CPUINFO = 1,
+  READ = 10,
+  WRITE = 11,
+  LOAD = 20,
+  STORE = 21,
+  ADD = 30,
+  SUB = 31,
+  DIVIDE = 32,
+  MUL = 33,
+  JUMP = 40,
+  JNEG = 41,
+  JZ = 42,
+  HALT = 43,
+  SUBC = 66,
+  LOGLC = 67,
+};
+
 int sc_commandEncode (int sign, int command, int operand, int *value);
 int sc_commandDecode (int value, int *sign, int *command, int *operand);
 int sc_commandValidate (int command);
