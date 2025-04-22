@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "myBigChars.h"
+#include "myReadKey.h"
 #include "mySimpleComputer.h"
 
 #include "print.h"
@@ -112,7 +113,7 @@ printAccumulator ()
   if (fd == -1)
     return;
 
-  char bufCommand[3], bufOperand[3], hex[5];
+  char bufCommand[3], bufOperand[3], dec[6];
   int value, sign, command, operand;
   int x = 64, y = 2;
 
@@ -121,7 +122,7 @@ printAccumulator ()
 
   snprintf (bufCommand, 3, "%02X", command);
   snprintf (bufOperand, 3, "%02X", operand);
-  snprintf (hex, 5, "%04X", value);
+  snprintf (dec, 6, "%05d", value);
 
   mt_gotoXY (x, y);
 
@@ -129,8 +130,8 @@ printAccumulator ()
   write (fd, sign == 0 ? "+" : "-", 1);
   write (fd, bufCommand, 2);
   write (fd, bufOperand, 2);
-  write (fd, " hex: ", 6);
-  write (fd, hex, 5);
+  write (fd, " dec:", 5);
+  write (fd, dec, 6);
 
   close (fd);
 }
@@ -150,15 +151,30 @@ printCounters ()
   snprintf (bufCommand, 3, "%02X", command);
   snprintf (bufOperand, 3, "%02X", operand);
 
-  mt_gotoXY (63, 5);
-  write (fd, "T: 00", 5);
-
   mt_gotoXY (73, 5);
 
   write (fd, "IC: ", 4);
   write (fd, sign == 0 ? "+" : "-", 1);
   write (fd, bufCommand, 2);
   write (fd, bufOperand, 2);
+
+  close (fd);
+}
+
+void
+printTactCounter (int tact)
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  mt_gotoXY (63, 5);
+
+  char bufCounter[3];
+
+  snprintf (bufCounter, 3, "%02X", tact);
+  write (fd, "T: ", 3);
+  write (fd, bufCounter, 2);
 
   close (fd);
 }
@@ -211,36 +227,30 @@ printCommand ()
   if (fd == -1)
     return;
 
+  int reg;
+
+  sc_regGet (4, &reg);
+  if (reg)
+    {
+      mt_gotoXY (92, 5);
+      write (fd, "! + FF : FF", 11);
+      close (fd);
+      return;
+    }
+
   int address, value, sign, command, operand;
   char bufCommand[6], bufOperand[3];
 
   sc_icounterGet (&address);
-
-  if (address < 0 || address > 127)
-    {
-      mt_gotoXY (92, 5);
-      write (fd, "! + FF : FF", 11);
-      close (fd);
-      return;
-    }
-
   sc_memoryGet (address, &value);
   sc_commandDecode (value, &sign, &command, &operand);
-
-  if (sc_commandValidate (command))
-    {
-      mt_gotoXY (92, 5);
-      write (fd, "! + FF : FF", 11);
-      close (fd);
-      return;
-    }
 
   snprintf (bufCommand, 6, "%02X : ", command);
   snprintf (bufOperand, 3, "%02X", operand);
 
-  mt_gotoXY (94, 5);
+  mt_gotoXY (92, 5);
 
-  write (fd, sign == 0 ? "+ " : "- ", 2);
+  write (fd, sign == 0 ? "  + " : "  - ", 4);
   write (fd, bufCommand, 5);
   write (fd, bufOperand, 2);
 

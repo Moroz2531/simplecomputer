@@ -8,6 +8,7 @@ void printFlags ();
 void printDecodedCommand (int value);
 void printAccumulator ();
 void printCounters ();
+void printTactCounter (int tact);
 void printTerm (int address, int input);
 void printCommand ();
 void printBigCell (int address, int big[36]);
