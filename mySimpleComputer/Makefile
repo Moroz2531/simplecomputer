@@ -17,4 +17,4 @@ $(TARGET) : $(OBJ)
 -include *.d
 
 clean:
-	rm -rf *.o *.d *.a
+	rm -rf *.o *.d *.a *.gch
