@@ -1,7 +1,12 @@
+#include <stdlib.h>
 #include <string.h>
+
 #include <termios.h>
 #include <unistd.h>
 
+#include "console/print.h"
+
+#include "myBigChars.h"
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
 #include "myTerm.h"
@@ -138,5 +143,120 @@ rk_readvalue (int *value, int timeout)
     }
   if (sc_commandEncode (command[0], command[1], command[2], value))
     return -1;
+  return 0;
+}
+
+int
+file_save_load (enum keys key)
+{
+  int x;
+
+  mt_gotoXY (0, 26);
+
+  switch (key)
+    {
+    case key_l:
+      write (STDOUT_FILENO, "Введите имя файла для загрузки: ", 58);
+      x = bc_strlen ("Введите имя файла для загрузки: ");
+      break;
+    case key_s:
+      write (STDOUT_FILENO, "Введите имя файла для сохранения: ", 62);
+      x = bc_strlen ("Введите имя файла для сохранения: ");
+      break;
+    default:
+      return -1;
+    }
+
+  char *filename = calloc (sizeof (char), 256);
+  if (filename == NULL)
+    return -1;
+
+  mt_setcursorvisible (0);
+  rk_mytermsave ();
+
+  for (int i = 0, count_byte = 0;;)
+    {
+      char buf[16] = "\0";
+
+      rk_mytermregime (0, 0, 0, 1, 1);
+      count_byte = read (STDIN_FILENO, buf, 15);
+      if (strcmp (buf, "\n") == 0 || i >= 254 || count_byte < 0)
+        break;
+      if (strcmp (buf, "\177") == 0)
+        {
+          mt_gotoXY (x + 1, 26);
+          filename[0] = '\0';
+          i = 0;
+          write (STDOUT_FILENO, "\e[K", 3);
+          continue;
+        }
+
+      strcat (filename, buf);
+      i += count_byte;
+    }
+  mt_setcursorvisible (1);
+  rk_mytermrestore ();
+  switch (key)
+    {
+    case key_l:
+      sc_memoryLoad (filename);
+      break;
+    case key_s:
+      sc_memorySave (filename);
+    default:
+      break;
+    }
+  free (filename);
+  mt_gotoXY (0, 26);
+  mt_delline ();
+
+  return 0;
+}
+
+int
+move (enum keys key, unsigned int *addr, int *big)
+{
+  unsigned int address = *addr;
+  int value;
+
+  printCell (address, DEFAULT, DEFAULT);
+  switch (key)
+    {
+    case key_up:
+      address -= 10;
+      if (address > 127)
+        {
+          address = (address % 128) + 2;
+          if (address == 128 || address == 129)
+            address -= 10;
+        }
+      break;
+
+    case key_down:
+      address += 10;
+      if (address >= 128 && address < 130)
+        address = 8 + (address & 1);
+      else if (address >= 130)
+        address = (address & 0XF) - 2;
+      break;
+
+    case key_left:
+      address--;
+      address %= 128;
+      break;
+
+    case key_right:
+      address++;
+      address %= 128;
+      break;
+
+    default:
+      break;
+    }
+  printCell (address, FG_WHITE, BG_BLACK);
+  printBigCell (address, big);
+  sc_memoryGet (address, &value);
+  printDecodedCommand (value);
+  *addr = address;
   return 0;
 }
