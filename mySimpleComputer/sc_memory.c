@@ -3,8 +3,6 @@
 
 #include "mySimpleComputer.h"
 
-#define SIZE_MEMORY 128
-
 int memory[SIZE_MEMORY];
 
 int
@@ -18,7 +16,6 @@ sc_memoryInit ()
 int
 sc_memorySet (int address, int value)
 {
-
   if (address < 0 || address > SIZE_MEMORY - 1)
     return -1;
   if (__SHRT_MAX__ < value || value < 0)
