@@ -1,8 +1,11 @@
 #include <unistd.h>
 
 #include "IO-controller.h"
-#include "console/print.h"
 
+#include "console/print.h"
+#include "memory-controller.h"
+
+#include "myReadKey.h"
 #include "mySimpleComputer.h"
 #include "myTerm.h"
 
@@ -22,6 +25,7 @@ IO (int command, int operand)
       mt_delline ();
       break;
     case READ:
+      printTerm (operand, 1);
       break;
     case WRITE:
       printTerm (operand, 0);
