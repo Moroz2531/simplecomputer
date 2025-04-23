@@ -141,8 +141,10 @@ rk_readvalue (int *value, int timeout)
       if (!flag_num)
         return -1;
     }
-  if (sc_commandEncode (command[0], command[1], command[2], value))
+  int value_temp;
+  if (sc_commandEncode (command[0], command[1], command[2], &value_temp))
     return -1;
+  *value = value_temp;
   return 0;
 }
 
