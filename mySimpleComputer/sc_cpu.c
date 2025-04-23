@@ -13,6 +13,7 @@
 void CU_reset ();
 
 int tact_counter = 0; // счетчик тактов простоя процессора
+int flag_not_ignore_tact = 0;
 
 enum
 {
@@ -60,7 +61,8 @@ clock_pulse_generator (int tact)
   int flag_ignore_tact_pulse = 0;
 
   sc_regGet (3, &flag_ignore_tact_pulse);
-  while (tact_counter >= 0 && flag_ignore_tact_pulse == 0)
+  while ((tact_counter >= 0 && flag_ignore_tact_pulse == 0) || 
+  (tact_counter >= 0 && flag_not_ignore_tact != 0))
     {
       printTactCounter (tact_counter);
       pause ();
@@ -82,13 +84,15 @@ CU_reset ()
 
 /* Алгоритм работы одного такта устройства управления */
 void
-CU ()
+CU (int tact)
 {
-  sc_icounterSet (0);
-
   int sign, command, operand;
   int accumulator, value_memory;
-  int i;
+  int i, count_tact;
+  if (tact)
+    flag_not_ignore_tact = 1;
+  else
+    flag_not_ignore_tact = 0;
 
   while (1)
     {
@@ -179,6 +183,12 @@ CU ()
           break;
         }
       sc_icounterSet (i);
+      if(tact)
+      {
+        count_tact++;
+        if (count_tact >= tact)
+          break;
+      }
     }
 }
 
@@ -188,7 +198,6 @@ ALU (int command, int operand)
   int old_accumulator, old_value_memory;
   int accumulator, value_memory;
 
-  clock_pulse_generator (0);
   sc_accumulatorGet (&accumulator);
   old_accumulator = accumulator;
   if ((accumulator >> 14) == 1)

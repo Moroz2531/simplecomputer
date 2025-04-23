@@ -180,13 +180,16 @@ main (int argv, char *argc[])
           break;
 
         case key__r:
+          sc_icounterSet (0);
           sc_regSet (3, 0);
+          printCounters ();
           printFlags ();
-          CU ();
+          CU (0);
           sc_regSet (3, 1);
           printFlags ();
           break;
         case key__t:
+          CU(1);
           break;
 
         default:
