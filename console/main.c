@@ -176,6 +176,7 @@ main (int argv, char *argc[])
             printCell (i, DEFAULT, DEFAULT);
           printDecodedCommand (0);
           printCell (address, FG_WHITE, BG_BLACK);
+          printAccumulator();
           printBigCell (address, big);
           break;
 
@@ -190,6 +191,8 @@ main (int argv, char *argc[])
           break;
         case key__t:
           CU(1);
+          printCounters ();
+          printFlags ();
           break;
 
         default:

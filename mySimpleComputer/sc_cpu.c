@@ -250,8 +250,8 @@ ALU (int command, int operand)
       sc_regSet (4, 1);
       printCommand ();
       return -1;
-    }
-  if (0x3FFF <= accumulator && accumulator <= -0x3FFF)
+    };
+  if (0x3FFF >= accumulator && accumulator >= -0x3FFF)
     {
       if (accumulator < 0)
         {
