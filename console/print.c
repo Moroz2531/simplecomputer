@@ -81,6 +81,7 @@ printDecodedCommand (int value)
 
   for (int i = 0; i < 15; i++)
     bin[i] = (1 & (value >> (14 - i))) == 1 ? '1' : '0';
+  value &= ~(1 << 14);
 
   snprintf (dec, 8, "%05d |", value);
   snprintf (oct, 8, "%05o |", value);

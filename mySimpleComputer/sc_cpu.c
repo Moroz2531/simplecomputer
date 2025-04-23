@@ -111,6 +111,7 @@ CU ()
           printCommand ();
           break;
         }
+      clock_pulse_generator (0);
       switch (command)
         {
         case NOP:
@@ -184,20 +185,31 @@ CU ()
 int
 ALU (int command, int operand)
 {
-  clock_pulse_generator (0);
-
+  int old_accumulator, old_value_memory;
   int accumulator, value_memory;
 
+  clock_pulse_generator (0);
   sc_accumulatorGet (&accumulator);
+  old_accumulator = accumulator;
   if ((accumulator >> 14) == 1)
-    accumulator *= -1;
+    {
+      accumulator &= ~(1 << 14);
+      accumulator *= -1;
+    }
 
-  memoryController (operand, &value_memory, GET);
+  if (memoryController (operand, &value_memory, GET))
+    {
+      sc_regSet (2, 1);
+      return -1;
+    }
+  old_value_memory = value_memory;
   if ((value_memory >> 14) == 1)
-    value_memory *= -1;
+    {
+      value_memory &= ~(1 << 14);
+      value_memory *= -1;
+    }
 
   clock_pulse_generator (0);
-
   switch (command)
     {
     case ADD:
@@ -218,23 +230,33 @@ ALU (int command, int operand)
       accumulator *= value_memory;
       break;
     case SUBC:
-      break;
+      sc_accumulatorSet (old_value_memory);
+      ALU (SUB, old_accumulator);
+      return 0;
     case LOGLC:
       accumulator = value_memory << accumulator;
+      accumulator &= ~(0 << 13);
       break;
     default:
+      sc_regSet (4, 1);
+      printCommand ();
       return -1;
     }
-  if (accumulator < 0)
+  if (0x3FFF <= accumulator && accumulator <= -0x3FFF)
     {
-      accumulator *= -1;
-      accumulator |= (1 << 14);
+      if (accumulator < 0)
+        {
+          accumulator *= -1;
+          accumulator |= (1 << 14);
+        }
     }
-  if (sc_accumulatorSet (accumulator))
+  else
     {
       sc_regSet (0, 1);
       return -1;
     }
+  clock_pulse_generator (0);
+  sc_accumulatorSet (accumulator);
   printAccumulator ();
   return 0;
 }
