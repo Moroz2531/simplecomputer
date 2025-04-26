@@ -57,8 +57,17 @@ int sc_regGet (int registr, int *value);
 
 #ifndef CPU_H
 #define CPU_H
+enum
+{
+  SET = 0,
+  GET = 1,
+};
 void IRC (int signum);
+void run_simplecomputer ();
 void CU ();
-void clock_pulse_generator (int tact);
+void CU_reset ();
+
+int memoryController (int operand, int *value, int state);
 int ALU (int command, int operand);
+int IO (int command, int operand);
 #endif

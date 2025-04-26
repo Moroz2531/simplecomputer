@@ -1,74 +1,187 @@
+#include <stdio.h>
+
 #include <signal.h>
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "IO-controller.h"
 #include "console/print.h"
-#include "memory-controller.h"
 
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
 #include "myTerm.h"
 
-void CU_reset ();
+#define COUNT_PULSE_MEMORY 5
 
-int tact_counter = 0; // счетчик тактов простоя процессора
-int flag_not_ignore_tact = 0;
+int tact_counter = 0;
+int flag_IRC_run = 0;
 
 enum
 {
   TACT = SIGALRM,
+  TACT_T = SIGUSR2,
   RESET = SIGUSR1,
 };
 
-/* Контроллер прерываний */
-/* Генератор импульсов: SIGALRM, от Reset: SIGUSR1 */
+struct itimerval nval, oval;
+
 void
-IRC (int signum)
+init_generator ()
 {
-  signal (RESET, CU_reset);
-  switch (signum)
-    {
-    case TACT:
-      tact_counter--;
-      break;
-    case RESET:
-      raise (RESET);
-      break;
-    default:
-      break;
-    }
-}
-
-/* Генератор импульсов */
-void
-clock_pulse_generator (int tact)
-{
-  tact_counter = tact;
-
-  struct itimerval nval, oval;
-
-  signal (TACT, IRC);
-
+  /* generate 2 pulse per second */
   nval.it_interval.tv_sec = 0;
   nval.it_interval.tv_usec = 500000;
   nval.it_value.tv_sec = 0;
   nval.it_value.tv_usec = 500000;
+}
 
-  /* Запускаем таймер */
+int
+memoryController (int operand, int *value, int state)
+{
+  signal (TACT, IRC);
+
+  if (value == NULL)
+    return -1;
+  tact_counter = COUNT_PULSE_MEMORY;
+
+  int temp_value;
+
+  while (1)
+    {
+      pause ();
+      printTactCounter (tact_counter);
+
+      if (flag_IRC_run)
+        {
+          flag_IRC_run = 0;
+          switch (state)
+            {
+            case SET:
+              if (sc_memorySet (operand, *value))
+                return -1;
+              break;
+            case GET:
+              if (sc_memoryGet (operand, &temp_value))
+                return -1;
+              break;
+            default:
+              return -1;
+            };
+          *value = temp_value;
+          break;
+        }
+    }
+  return 0;
+}
+
+int
+IO (int command, int operand)
+{
+  int value;
+  char buf[4];
+
+  switch (command)
+    {
+    case CPUINFO:
+      signal (TACT, IRC);
+      mt_gotoXY (0, 26);
+      write (STDOUT_FILENO, "Носов Денис Алексеевич, ИВ-323", 52);
+      tact_counter += 8;
+      while (1)
+        {
+          pause ();
+          printTactCounter (tact_counter);
+          if (flag_IRC_run)
+            {
+              flag_IRC_run = 0;
+              break;
+            }
+        }
+      mt_gotoXY (0, 26);
+      mt_delline ();
+      break;
+
+    case READ:
+      alarm (0);
+      snprintf (buf, 4, "%02d<", operand);
+      mt_gotoXY (69, 24);
+      write (STDOUT_FILENO, buf, 4);
+      mt_gotoXY (73, 24);
+      rk_readvalue (&value, 300);
+      setitimer (ITIMER_REAL, &nval, &oval);
+      memoryController (operand, &value, SET);
+      printCell (operand, DEFAULT, DEFAULT);
+      printTerm (operand, 1);
+      break;
+    case WRITE:
+      printTerm (operand, 0);
+      break;
+    default:
+      return -1;
+    }
+  return 0;
+}
+
+void
+run_simplecomputer ()
+{
+  int flag_ignore_pulse = 0, registr;
+
+  sc_regGet (3, &flag_ignore_pulse);
+  if (flag_ignore_pulse)
+    return;
+
+  init_generator ();
+  signal (TACT, IRC);
   setitimer (ITIMER_REAL, &nval, &oval);
 
-  int flag_ignore_tact_pulse = 0;
-
-  sc_regGet (3, &flag_ignore_tact_pulse);
-  while ((tact_counter >= 0 && flag_ignore_tact_pulse == 0) || 
-  (tact_counter >= 0 && flag_not_ignore_tact != 0))
+  while (1)
     {
-      printTactCounter (tact_counter);
       pause ();
-      sc_regGet (3, &flag_ignore_tact_pulse);
+      printTactCounter (tact_counter);
+      if (flag_IRC_run)
+        {
+          flag_IRC_run = 0;
+          CU ();
+          for (int i = 0; i < 5; i++)
+            {
+              sc_regGet (i, &registr);
+              if (registr)
+                break;
+            }
+          if (registr)
+            break;
+        }
     }
   alarm (0);
+  sc_regSet (3, 1);
+}
+
+void
+IRC (int signum)
+{
+  signal (RESET, CU_reset);
+  signal (TACT_T, CU);
+
+  switch (signum)
+    {
+    case TACT:
+      if (tact_counter > 0)
+        tact_counter--;
+      else
+        flag_IRC_run = 1;
+      break;
+    case RESET:
+      raise (signum);
+      break;
+    case TACT_T:
+      init_generator ();
+      setitimer (ITIMER_REAL, &nval, &oval);
+      raise (signum);
+      alarm (0);
+      break;
+    default:
+      break;
+    }
 }
 
 void
@@ -82,114 +195,99 @@ CU_reset ()
   tact_counter = 0;
 }
 
-/* Алгоритм работы одного такта устройства управления */
 void
-CU (int tact)
+CU ()
 {
   int sign, command, operand;
   int accumulator, value_memory;
-  int i, count_tact;
-  if (tact)
-    flag_not_ignore_tact = 1;
-  else
-    flag_not_ignore_tact = 0;
+  int i;
 
-  while (1)
+  sc_icounterGet (&i);
+  if (i < 0 || i >= SIZE_MEMORY)
     {
-      sc_icounterGet (&i);
-      if (i < 0 || i >= SIZE_MEMORY)
+      sc_regSet (2, 1);
+      return;
+    }
+
+  printCounters ();
+  memoryController (i, &value_memory, GET);
+  printCommand ();
+  i++;
+
+  if (sc_commandDecode (value_memory, &sign, &command, &operand)
+      || sc_commandValidate (command) || sign == 1)
+    {
+      sc_regSet (4, 1);
+      printCommand ();
+      return;
+    }
+  switch (command)
+    {
+    case NOP:
+      break;
+    case CPUINFO:
+    case READ:
+    case WRITE:
+      IO (command, operand);
+      break;
+    case LOAD:
+      if (memoryController (operand, &value_memory, GET))
         {
           sc_regSet (2, 1);
           break;
         }
-
-      printCounters ();
-      memoryController (i, &value_memory, GET);
-      printCommand ();
-      i++;
-
-      if (sc_commandDecode (value_memory, &sign, &command, &operand)
-          || sc_commandValidate (command) || sign == 1)
+      sc_accumulatorSet (value_memory);
+      printAccumulator ();
+      break;
+    case STORE:
+      sc_accumulatorGet (&accumulator);
+      if (memoryController (operand, &accumulator, SET))
         {
-          sc_regSet (4, 1);
-          printCommand ();
+          sc_regSet (2, 1);
           break;
         }
-      clock_pulse_generator (0);
+      printCell (operand, DEFAULT, DEFAULT);
+      break;
+    case ADD:
+    case SUB:
+    case DIVIDE:
+    case MUL:
+    case SUBC:
+    case LOGLC:
+      ALU (command, operand);
+      break;
+    case JUMP:
+    case JNEG:
+    case JZ:
+      if (0 > operand || operand >= SIZE_MEMORY)
+        {
+          sc_regSet (2, 1);
+          break;
+        }
       switch (command)
         {
-        case NOP:
-          break;
-        case CPUINFO:
-        case READ:
-        case WRITE:
-          IO (command, operand);
-          break;
-        case LOAD:
-          if (memoryController (operand, &value_memory, GET))
-            {
-              sc_regSet (2, 1);
-              return;
-            }
-          sc_accumulatorSet (value_memory);
-          printAccumulator ();
-          break;
-        case STORE:
-          sc_accumulatorGet (&accumulator);
-          if (memoryController (operand, &accumulator, SET))
-            {
-              sc_regSet (2, 1);
-              return;
-            }
-          printCell (operand, DEFAULT, DEFAULT);
-          break;
-        case ADD:
-        case SUB:
-        case DIVIDE:
-        case MUL:
-        case SUBC:
-        case LOGLC:
-          if (ALU (command, operand))
-            return;
-          break;
         case JUMP:
-        case JNEG:
-        case JZ:
-          if (0 > operand || operand >= SIZE_MEMORY)
-            {
-              sc_regSet (2, 1);
-              return;
-            }
-          switch (command)
-            {
-            case JUMP:
-              i = operand;
-              break;
-            case JNEG:
-              sc_accumulatorGet (&accumulator);
-              if ((accumulator >> 14) == 1)
-                i = operand;
-              break;
-            case JZ:
-              sc_accumulatorGet (&accumulator);
-              if (accumulator == 0 || accumulator == 0x4000)
-                i = operand;
-              break;
-            }
+          i = operand;
           break;
-        case HALT:
-          return;
-        default:
+        case JNEG:
+          sc_accumulatorGet (&accumulator);
+          if ((accumulator >> 14) == 1)
+            i = operand;
+          break;
+        case JZ:
+          sc_accumulatorGet (&accumulator);
+          if (accumulator == 0)
+            i = operand;
           break;
         }
-      sc_icounterSet (i);
-      if(tact)
-      {
-        count_tact++;
-        if (count_tact >= tact)
-          break;
-      }
+      break;
+    case HALT:
+      sc_regSet (3, 1);
+      break;
+    default:
+      break;
     }
+  sc_icounterSet (i);
 }
 
 int
@@ -218,7 +316,6 @@ ALU (int command, int operand)
       value_memory *= -1;
     }
 
-  clock_pulse_generator (0);
   switch (command)
     {
     case ADD:
@@ -264,7 +361,6 @@ ALU (int command, int operand)
       sc_regSet (0, 1);
       return -1;
     }
-  clock_pulse_generator (0);
   sc_accumulatorSet (accumulator);
   printAccumulator ();
   return 0;

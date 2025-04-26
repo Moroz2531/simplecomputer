@@ -6,7 +6,6 @@
 #include "myBigChars.h"
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
-#include "mySimpleComputer/memory-controller.h"
 
 #include "print.h"
 
@@ -201,33 +200,17 @@ printTerm (int address, int input)
         }
     }
 
-  if (input == 0)
-    {
-      sc_memoryGet (address, &value);
-      sc_commandDecode (value, &sign, &command, &operand);
+  sc_memoryGet (address, &value);
+  sc_commandDecode (value, &sign, &command, &operand);
 
-      snprintf (buf[4], 10,
-                address < 100 ? "%02d%c %c%02X%02X" : "%02d%c%c%02X%02X",
-                address, '>', sign == 0 ? '+' : '-', command, operand);
-    }
-  else
-    snprintf (buf[4], 5, "%02d<", address);
+  snprintf (buf[4], 10,
+            address < 100 ? "%02d%c %c%02X%02X" : "%02d%c%c%02X%02X", address,
+            input == 0 ? '>' : '<', sign == 0 ? '+' : '-', command, operand);
 
   for (int i = y[0], j = 0; i < y[1] + 1; i++, j++)
     {
       mt_gotoXY (x, i);
       write (fd, buf[j], 10);
-    }
-  if (input)
-    {
-      mt_gotoXY (73, 24);
-      rk_readvalue (&value, 300);
-      sc_memorySet (address, value);
-      sc_memoryGet (address, &value);
-      printCell (address, DEFAULT, DEFAULT);
-      sc_commandDecode (value, &sign, &command, &operand);
-      snprintf (&buf[4][5], 6, "%c%02X%02X", sign == 0 ? '+' : '-', command,
-                operand);
     }
   close (fd);
 }

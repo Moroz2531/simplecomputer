@@ -176,7 +176,7 @@ main (int argv, char *argc[])
             printCell (i, DEFAULT, DEFAULT);
           printDecodedCommand (0);
           printCell (address, FG_WHITE, BG_BLACK);
-          printAccumulator();
+          printAccumulator ();
           printBigCell (address, big);
           break;
 
@@ -185,12 +185,12 @@ main (int argv, char *argc[])
           sc_regSet (3, 0);
           printCounters ();
           printFlags ();
-          CU (0);
+          run_simplecomputer ();
           sc_regSet (3, 1);
           printFlags ();
           break;
         case key__t:
-          CU(1);
+          IRC (SIGUSR2);
           printCounters ();
           printFlags ();
           break;
