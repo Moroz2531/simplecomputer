@@ -58,6 +58,7 @@ sc_commandValidate (int command)
     case LOGLC:
       return 0;
     default:
+      break;
     }
   return -1;
 }

@@ -308,8 +308,6 @@ ALU (int command, int operand)
   if ((old_value_memory >> 14) == 1)
     value_memory *= -1;
 
-  printf ("%d %d", accumulator, value_memory);
-
   switch (command)
     {
     case ADD:
