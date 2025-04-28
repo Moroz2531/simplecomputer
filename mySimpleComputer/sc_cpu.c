@@ -78,9 +78,6 @@ memoryController (int operand, int *value, int state)
 int
 IO (int command, int operand)
 {
-  int value;
-  char buf[4];
-
   switch (command)
     {
     case CPUINFO:
@@ -104,15 +101,8 @@ IO (int command, int operand)
 
     case READ:
       alarm (0);
-      snprintf (buf, 4, "%02d<", operand);
-      mt_gotoXY (69, 24);
-      write (STDOUT_FILENO, buf, 4);
-      mt_gotoXY (73, 24);
-      rk_readvalue (&value, 300);
-      setitimer (ITIMER_REAL, &nval, &oval);
-      memoryController (operand, &value, SET);
-      printCell (operand, DEFAULT, DEFAULT);
       printTerm (operand, 1);
+      setitimer (ITIMER_REAL, &nval, &oval);
       break;
     case WRITE:
       printTerm (operand, 0);
