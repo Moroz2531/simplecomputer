@@ -123,7 +123,7 @@ printAccumulator ()
 
   snprintf (bufCommand, 3, "%02X", command);
   snprintf (bufOperand, 3, "%02X", operand);
-  snprintf (dec, 6, "%05d", value);
+  snprintf (dec, 6, "%05d", (value) & ~(1 << 14));
 
   mt_gotoXY (x, y);
 

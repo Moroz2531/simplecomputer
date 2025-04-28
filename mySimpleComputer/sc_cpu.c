@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <signal.h>
 #include <sys/time.h>
@@ -203,14 +205,12 @@ CU ()
   int i;
 
   sc_icounterGet (&i);
-  if (i < 0 || i >= SIZE_MEMORY)
+  printCounters ();
+  if (memoryController (i, &value_memory, GET))
     {
       sc_regSet (2, 1);
       return;
     }
-
-  printCounters ();
-  memoryController (i, &value_memory, GET);
   printCommand ();
   i++;
 
@@ -295,14 +295,10 @@ ALU (int command, int operand)
 {
   int old_accumulator, old_value_memory;
   int accumulator, value_memory;
+  char accumulator_char[6], value_char[6];
 
   sc_accumulatorGet (&accumulator);
   old_accumulator = accumulator;
-  if ((accumulator >> 14) == 1)
-    {
-      accumulator &= ~(1 << 14);
-      accumulator *= -1;
-    }
 
   if (memoryController (operand, &value_memory, GET))
     {
@@ -310,11 +306,19 @@ ALU (int command, int operand)
       return -1;
     }
   old_value_memory = value_memory;
-  if ((value_memory >> 14) == 1)
-    {
-      value_memory &= ~(1 << 14);
-      value_memory *= -1;
-    }
+
+  snprintf (accumulator_char, 6, "%05d", (old_accumulator) & ~(1 << 14));
+  snprintf (value_char, 6, "%05d", (old_value_memory) & ~(1 << 14));
+
+  accumulator = atoi (accumulator_char);
+  value_memory = atoi (value_char);
+
+  if ((old_accumulator >> 14) == 1)
+    accumulator *= -1;
+  if ((old_value_memory >> 14) == 1)
+    value_memory *= -1;
+
+  printf ("%d %d", accumulator, value_memory);
 
   switch (command)
     {
@@ -337,11 +341,13 @@ ALU (int command, int operand)
       break;
     case SUBC:
       sc_accumulatorSet (old_value_memory);
-      ALU (SUB, old_accumulator);
-      return 0;
+      printAccumulator ();
+      return ALU (SUB, old_accumulator);
     case LOGLC:
+      value_memory *= (value_memory < 0) ? -1 : 1;
       accumulator = value_memory << accumulator;
-      accumulator &= ~(0 << 13);
+      accumulator &= 0x3FFF;
+      accumulator *= (old_value_memory >> 14) == 1 ? -1 : 1;
       break;
     default:
       sc_regSet (4, 1);
