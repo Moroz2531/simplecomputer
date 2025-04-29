@@ -220,7 +220,7 @@ printTerm (int address, int input)
   if (input)
     {
       mt_gotoXY (73, 24);
-      rk_readvalue (&value, 300);
+      rk_readvalue (&value);
       sc_memorySet (address, value);
       sc_memoryGet (address, &value);
       printCell (address, DEFAULT, DEFAULT);

@@ -93,58 +93,118 @@ rk_mytermregime (int regime, int vtime, int vmin, int echo, int sigint)
   return tcsetattr (STDIN_FILENO, TCSAFLUSH, &t);
 }
 
-int
-rk_readvalue (int *value, int timeout)
+static int
+rk_readvalue_check_sign (char buf[2], int *command)
 {
-  if (rk_mytermsave () || rk_mytermregime (0, timeout, 5, 1, 0))
+  if (command == NULL)
     return -1;
 
-  char buf[6];
+  if (strcmp (buf, "+") == 0)
+    *command = 0;
+  else if (strcmp (buf, "-") == 0)
+    *command = 1;
+  else
+    return -1;
+  return 0;
+}
 
-  mt_setcursorvisible (0);
-  read (STDIN_FILENO, buf, 5);
-  mt_setcursorvisible (1);
-
-  if (rk_mytermrestore ())
+static int
+rk_readvalue_check_value (char buf[2], int *command, int shift)
+{
+  if (command == NULL)
     return -1;
 
-  int command[3] = { 0, 0, 0 };
-
-  switch (buf[0])
+  switch (shift)
     {
-    case '+':
-      command[0] = 0;
-      break;
-    case '-':
-      command[0] = 1;
+    case 1:
+      shift = 4;
       break;
     default:
-      return -1;
-    }
-  int numbers[16][2] = { { '0', 0 },  { '1', 1 },  { '2', 2 },  { '3', 3 },
-                         { '4', 4 },  { '5', 5 },  { '6', 6 },  { '7', 7 },
-                         { '8', 8 },  { '9', 9 },  { 'A', 10 }, { 'B', 11 },
-                         { 'C', 12 }, { 'D', 13 }, { 'E', 14 }, { 'F', 15 } };
+      shift = 0;
+    };
 
-  for (int i = 1, flag_num; i < 5; i++)
-    {
-      flag_num = 0;
-      for (int j = 0; j < 16; j++)
-        {
-          if (buf[i] == numbers[j][0])
-            {
-              command[1 + ((i - 1) >> 1)] |= numbers[j][1] << (4 * (i % 2));
-              flag_num = 1;
-              break;
-            }
-        }
-      if (!flag_num)
-        return -1;
-    }
-  int value_temp;
-  if (sc_commandEncode (command[0], command[1], command[2], &value_temp))
+  if (strcmp (buf, "0") == 0)
+    return 0;
+  else if (strcmp (buf, "1") == 0)
+    *command |= (1 << shift);
+  else if (strcmp (buf, "2") == 0)
+    *command |= (2 << shift);
+  else if (strcmp (buf, "3") == 0)
+    *command |= (3 << shift);
+  else if (strcmp (buf, "4") == 0)
+    *command |= (4 << shift);
+  else if (strcmp (buf, "5") == 0)
+    *command |= (5 << shift);
+  else if (strcmp (buf, "6") == 0)
+    *command |= (6 << shift);
+  else if (strcmp (buf, "7") == 0)
+    *command |= (7 << shift);
+  else if (strcmp (buf, "8") == 0)
+    *command |= (8 << shift);
+  else if (strcmp (buf, "9") == 0)
+    *command |= (9 << shift);
+  else if (strcmp (buf, "A") == 0)
+    *command |= (10 << shift);
+  else if (strcmp (buf, "B") == 0)
+    *command |= (11 << shift);
+  else if (strcmp (buf, "C") == 0)
+    *command |= (12 << shift);
+  else if (strcmp (buf, "D") == 0)
+    *command |= (13 << shift);
+  else if (strcmp (buf, "E") == 0)
+    *command |= (14 << shift);
+  else if (strcmp (buf, "F") == 0)
+    *command |= (15 << shift);
+  else
     return -1;
-  *value = value_temp;
+  return 0;
+}
+
+int
+rk_readvalue (int *value)
+{
+  mt_setcursorvisible (0);
+
+  int i = 0, command[3] = { 0 };
+  char buf[2];
+
+  while (i < 5)
+    {
+      int count_read = read (STDIN_FILENO, buf, 1);
+
+      if (count_read < 0)
+        return -1;
+      buf[count_read] = '\0';
+
+      if (strcmp (buf, "\e") == 0)
+        {
+          mt_setcursorvisible (1);
+          rk_mytermrestore ();
+          return 0;
+        }
+
+      if (i == 0)
+        {
+          if (rk_readvalue_check_sign (buf, command))
+            continue;
+        }
+      else
+        {
+          if (i <= 2)
+            {
+              if (rk_readvalue_check_value (buf, &command[1], 2 - i))
+                continue;
+            }
+          else if (rk_readvalue_check_value (buf, &command[2], 4 - i))
+            continue;
+        }
+      write (STDOUT_FILENO, buf, 1);
+      i++;
+    }
+  mt_setcursorvisible (1);
+  if (sc_commandEncode (command[0], command[1], command[2], value))
+    return -1;
+
   return 0;
 }
 

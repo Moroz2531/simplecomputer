@@ -104,7 +104,7 @@ main (int argv, char *argc[])
   sc_memoryGet (address, &value);
   printDecodedCommand (value);
 
-  if (rk_mytermregime (0, 0, 0, 1, 1))
+  if (rk_mytermregime (0, 0, 0, 0, 0))
     return -1;
 
   while (1)
@@ -127,7 +127,7 @@ main (int argv, char *argc[])
         case key_enter:
           printClearCell (2 + (address % 10 * 6), 2 + address / 10);
           sc_memoryGet (address, &value);
-          rk_readvalue (&value, 300);
+          rk_readvalue (&value);
           sc_memorySet (address, value);
           sc_memoryGet (address, &value);
           printDecodedCommand (value);
@@ -138,7 +138,7 @@ main (int argv, char *argc[])
         case key_f5:
           printClearCell (68, 2);
           sc_accumulatorGet (&value);
-          rk_readvalue (&value, 300);
+          rk_readvalue (&value);
           sc_accumulatorSet (value);
           printAccumulator ();
           break;
@@ -146,7 +146,7 @@ main (int argv, char *argc[])
         case key_f6:
           printClearCell (77, 5);
           sc_icounterGet (&value);
-          rk_readvalue (&value, 300);
+          rk_readvalue (&value);
           sc_icounterSet (value);
           printCounters ();
           printAccumulator ();
