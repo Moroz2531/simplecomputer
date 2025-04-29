@@ -23,6 +23,9 @@ int rk_readkey (enum keys *key);
 int rk_mytermsave ();
 int rk_mytermrestore ();
 int rk_mytermregime (int regime, int vtime, int vmin, int echo, int sigint);
-int rk_readvalue (int *value, int timeout);
+int rk_readvalue (int *value);
+
+int file_save_load (enum keys key);
+int move (enum keys key, unsigned int *addr, int *big);
 
 #endif

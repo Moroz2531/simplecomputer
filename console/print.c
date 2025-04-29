@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "myBigChars.h"
+#include "myReadKey.h"
 #include "mySimpleComputer.h"
 
 #include "print.h"
@@ -79,6 +80,7 @@ printDecodedCommand (int value)
 
   for (int i = 0; i < 15; i++)
     bin[i] = (1 & (value >> (14 - i))) == 1 ? '1' : '0';
+  value &= ~(1 << 14);
 
   snprintf (dec, 8, "%05d |", value);
   snprintf (oct, 8, "%05o |", value);
@@ -112,7 +114,7 @@ printAccumulator ()
   if (fd == -1)
     return;
 
-  char bufCommand[3], bufOperand[3], hex[5];
+  char bufCommand[3], bufOperand[3], dec[6];
   int value, sign, command, operand;
   int x = 64, y = 2;
 
@@ -121,7 +123,7 @@ printAccumulator ()
 
   snprintf (bufCommand, 3, "%02X", command);
   snprintf (bufOperand, 3, "%02X", operand);
-  snprintf (hex, 5, "%04X", value);
+  snprintf (dec, 6, "%05d", (value) & ~(1 << 14));
 
   mt_gotoXY (x, y);
 
@@ -129,8 +131,8 @@ printAccumulator ()
   write (fd, sign == 0 ? "+" : "-", 1);
   write (fd, bufCommand, 2);
   write (fd, bufOperand, 2);
-  write (fd, " hex: ", 6);
-  write (fd, hex, 5);
+  write (fd, " dec:", 5);
+  write (fd, dec, 6);
 
   close (fd);
 }
@@ -150,15 +152,30 @@ printCounters ()
   snprintf (bufCommand, 3, "%02X", command);
   snprintf (bufOperand, 3, "%02X", operand);
 
-  mt_gotoXY (63, 5);
-  write (fd, "T: 00", 5);
-
   mt_gotoXY (73, 5);
 
   write (fd, "IC: ", 4);
   write (fd, sign == 0 ? "+" : "-", 1);
   write (fd, bufCommand, 2);
   write (fd, bufOperand, 2);
+
+  close (fd);
+}
+
+void
+printTactCounter (int tact)
+{
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  mt_gotoXY (63, 5);
+
+  char bufCounter[3];
+
+  snprintf (bufCounter, 3, "%02X", tact);
+  write (fd, "T: ", 3);
+  write (fd, bufCounter, 2);
 
   close (fd);
 }
@@ -171,12 +188,8 @@ printTerm (int address, int input)
     return;
 
   int value, sign, command, operand;
-
-  sc_memoryGet (address, &value);
-  sc_commandDecode (value, &sign, &command, &operand);
-
-  static char buf[5][10];
   int y[] = { 20, 24 }, x = 69;
+  static char buf[5][10];
 
   for (int i = 0; i < 4; i++)
     {
@@ -189,17 +202,31 @@ printTerm (int address, int input)
 
   if (input == 0)
     {
+      sc_memoryGet (address, &value);
+      sc_commandDecode (value, &sign, &command, &operand);
+
       snprintf (buf[4], 10,
                 address < 100 ? "%02d%c %c%02X%02X" : "%02d%c%c%02X%02X",
                 address, '>', sign == 0 ? '+' : '-', command, operand);
     }
   else
-    snprintf (buf[4], 5, "%2d<", address);
+    snprintf (buf[4], 5, "%02d<", address);
 
   for (int i = y[0], j = 0; i < y[1] + 1; i++, j++)
     {
       mt_gotoXY (x, i);
       write (fd, buf[j], 10);
+    }
+  if (input)
+    {
+      mt_gotoXY (73, 24);
+      rk_readvalue (&value);
+      sc_memorySet (address, value);
+      sc_memoryGet (address, &value);
+      printCell (address, DEFAULT, DEFAULT);
+      sc_commandDecode (value, &sign, &command, &operand);
+      snprintf (&buf[4][5], 6, "%c%02X%02X", sign == 0 ? '+' : '-', command,
+                operand);
     }
   close (fd);
 }
@@ -211,36 +238,30 @@ printCommand ()
   if (fd == -1)
     return;
 
+  int reg;
+
+  sc_regGet (4, &reg);
+  if (reg)
+    {
+      mt_gotoXY (92, 5);
+      write (fd, "! + FF : FF", 11);
+      close (fd);
+      return;
+    }
+
   int address, value, sign, command, operand;
   char bufCommand[6], bufOperand[3];
 
   sc_icounterGet (&address);
-
-  if (address < 0 || address > 127)
-    {
-      mt_gotoXY (92, 5);
-      write (fd, "! + FF : FF", 11);
-      close (fd);
-      return;
-    }
-
   sc_memoryGet (address, &value);
   sc_commandDecode (value, &sign, &command, &operand);
-
-  if (sc_commandValidate (command))
-    {
-      mt_gotoXY (92, 5);
-      write (fd, "! + FF : FF", 11);
-      close (fd);
-      return;
-    }
 
   snprintf (bufCommand, 6, "%02X : ", command);
   snprintf (bufOperand, 3, "%02X", operand);
 
-  mt_gotoXY (94, 5);
+  mt_gotoXY (92, 5);
 
-  write (fd, sign == 0 ? "+ " : "- ", 2);
+  write (fd, sign == 0 ? "  + " : "  - ", 4);
   write (fd, bufCommand, 5);
   write (fd, bufOperand, 2);
 

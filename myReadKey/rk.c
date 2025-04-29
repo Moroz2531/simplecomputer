@@ -1,7 +1,12 @@
+#include <stdlib.h>
 #include <string.h>
+
 #include <termios.h>
 #include <unistd.h>
 
+#include "console/print.h"
+
+#include "myBigChars.h"
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
 #include "myTerm.h"
@@ -88,55 +93,232 @@ rk_mytermregime (int regime, int vtime, int vmin, int echo, int sigint)
   return tcsetattr (STDIN_FILENO, TCSAFLUSH, &t);
 }
 
-int
-rk_readvalue (int *value, int timeout)
+static int
+rk_readvalue_check_sign (char buf[2], int *command)
 {
-  if (rk_mytermsave () || rk_mytermregime (0, timeout, 5, 1, 0))
+  if (command == NULL)
     return -1;
 
-  char buf[6];
+  if (strcmp (buf, "+") == 0)
+    *command = 0;
+  else if (strcmp (buf, "-") == 0)
+    *command = 1;
+  else
+    return -1;
+  return 0;
+}
 
-  mt_setcursorvisible (0);
-  read (STDIN_FILENO, buf, 5);
-  mt_setcursorvisible (1);
-
-  if (rk_mytermrestore ())
+static int
+rk_readvalue_check_value (char buf[2], int *command, int shift)
+{
+  if (command == NULL)
     return -1;
 
-  int command[3] = { 0, 0, 0 };
-
-  switch (buf[0])
+  switch (shift)
     {
-    case '+':
-      command[0] = 0;
+    case 1:
+      shift = 4;
       break;
-    case '-':
-      command[0] = 1;
+    default:
+      shift = 0;
+    };
+
+  if (strcmp (buf, "0") == 0)
+    return 0;
+  else if (strcmp (buf, "1") == 0)
+    *command |= (1 << shift);
+  else if (strcmp (buf, "2") == 0)
+    *command |= (2 << shift);
+  else if (strcmp (buf, "3") == 0)
+    *command |= (3 << shift);
+  else if (strcmp (buf, "4") == 0)
+    *command |= (4 << shift);
+  else if (strcmp (buf, "5") == 0)
+    *command |= (5 << shift);
+  else if (strcmp (buf, "6") == 0)
+    *command |= (6 << shift);
+  else if (strcmp (buf, "7") == 0)
+    *command |= (7 << shift);
+  else if (strcmp (buf, "8") == 0)
+    *command |= (8 << shift);
+  else if (strcmp (buf, "9") == 0)
+    *command |= (9 << shift);
+  else if (strcmp (buf, "A") == 0)
+    *command |= (10 << shift);
+  else if (strcmp (buf, "B") == 0)
+    *command |= (11 << shift);
+  else if (strcmp (buf, "C") == 0)
+    *command |= (12 << shift);
+  else if (strcmp (buf, "D") == 0)
+    *command |= (13 << shift);
+  else if (strcmp (buf, "E") == 0)
+    *command |= (14 << shift);
+  else if (strcmp (buf, "F") == 0)
+    *command |= (15 << shift);
+  else
+    return -1;
+  return 0;
+}
+
+int
+rk_readvalue (int *value)
+{
+  mt_setcursorvisible (0);
+
+  int i = 0, command[3] = { 0 };
+  char buf[2];
+
+  while (i < 5)
+    {
+      int count_read = read (STDIN_FILENO, buf, 1);
+
+      if (count_read < 0)
+        return -1;
+      buf[count_read] = '\0';
+
+      if (strcmp (buf, "\e") == 0)
+        {
+          mt_setcursorvisible (1);
+          rk_mytermrestore ();
+          return 0;
+        }
+
+      if (i == 0)
+        {
+          if (rk_readvalue_check_sign (buf, command))
+            continue;
+        }
+      else
+        {
+          if (i <= 2)
+            {
+              if (rk_readvalue_check_value (buf, &command[1], 2 - i))
+                continue;
+            }
+          else if (rk_readvalue_check_value (buf, &command[2], 4 - i))
+            continue;
+        }
+      write (STDOUT_FILENO, buf, 1);
+      i++;
+    }
+  mt_setcursorvisible (1);
+  if (sc_commandEncode (command[0], command[1], command[2], value))
+    return -1;
+
+  return 0;
+}
+
+int
+file_save_load (enum keys key)
+{
+  int x;
+
+  mt_gotoXY (0, 26);
+
+  switch (key)
+    {
+    case key_l:
+      write (STDOUT_FILENO, "Введите имя файла для загрузки: ", 58);
+      x = bc_strlen ("Введите имя файла для загрузки: ");
+      break;
+    case key_s:
+      write (STDOUT_FILENO, "Введите имя файла для сохранения: ", 62);
+      x = bc_strlen ("Введите имя файла для сохранения: ");
       break;
     default:
       return -1;
     }
-  int numbers[16][2] = { { '0', 0 },  { '1', 1 },  { '2', 2 },  { '3', 3 },
-                         { '4', 4 },  { '5', 5 },  { '6', 6 },  { '7', 7 },
-                         { '8', 8 },  { '9', 9 },  { 'A', 10 }, { 'B', 11 },
-                         { 'C', 12 }, { 'D', 13 }, { 'E', 14 }, { 'F', 15 } };
 
-  for (int i = 1, flag_num; i < 5; i++)
-    {
-      flag_num = 0;
-      for (int j = 0; j < 16; j++)
-        {
-          if (buf[i] == numbers[j][0])
-            {
-              command[1 + ((i - 1) >> 1)] |= numbers[j][1] << (4 * (i % 2));
-              flag_num = 1;
-              break;
-            }
-        }
-      if (!flag_num)
-        return -1;
-    }
-  if (sc_commandEncode (command[0], command[1], command[2], value))
+  char *filename = calloc (sizeof (char), 256);
+  if (filename == NULL)
     return -1;
+
+  mt_setcursorvisible (0);
+  rk_mytermsave ();
+
+  for (int i = 0, count_byte = 0;;)
+    {
+      char buf[16] = "\0";
+
+      rk_mytermregime (0, 0, 0, 1, 1);
+      count_byte = read (STDIN_FILENO, buf, 15);
+      if (strcmp (buf, "\n") == 0 || i >= 254 || count_byte < 0)
+        break;
+      if (strcmp (buf, "\177") == 0)
+        {
+          mt_gotoXY (x + 1, 26);
+          filename[0] = '\0';
+          i = 0;
+          write (STDOUT_FILENO, "\e[K", 3);
+          continue;
+        }
+
+      strcat (filename, buf);
+      i += count_byte;
+    }
+  mt_setcursorvisible (1);
+  rk_mytermrestore ();
+  switch (key)
+    {
+    case key_l:
+      sc_memoryLoad (filename);
+      break;
+    case key_s:
+      sc_memorySave (filename);
+    default:
+      break;
+    }
+  free (filename);
+  mt_gotoXY (0, 26);
+  mt_delline ();
+
+  return 0;
+}
+
+int
+move (enum keys key, unsigned int *addr, int *big)
+{
+  unsigned int address = *addr;
+  int value;
+
+  printCell (address, DEFAULT, DEFAULT);
+  switch (key)
+    {
+    case key_up:
+      address -= 10;
+      if (address > 127)
+        {
+          address = (address % 128) + 2;
+          if (address == 128 || address == 129)
+            address -= 10;
+        }
+      break;
+
+    case key_down:
+      address += 10;
+      if (address >= 128 && address < 130)
+        address = 8 + (address & 1);
+      else if (address >= 130)
+        address = (address & 0XF) - 2;
+      break;
+
+    case key_left:
+      address--;
+      address %= 128;
+      break;
+
+    case key_right:
+      address++;
+      address %= 128;
+      break;
+
+    default:
+      break;
+    }
+  printCell (address, FG_WHITE, BG_BLACK);
+  printBigCell (address, big);
+  sc_memoryGet (address, &value);
+  printDecodedCommand (value);
+  *addr = address;
   return 0;
 }

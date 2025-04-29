@@ -1,4 +1,4 @@
-TARGET = pr01
+TARGET = pr06
 FONT = font
 CC = gcc
 

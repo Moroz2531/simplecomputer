@@ -1,7 +1,7 @@
 TARGET = libRc.a
 CC = gcc
 
-CFLAGS = -Wall -Werror -Wextra -MMD -MP -I ../include 
+CFLAGS = -Wall -Werror -Wextra -MMD -MP -I ../include  -I ..
 
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(SRC))

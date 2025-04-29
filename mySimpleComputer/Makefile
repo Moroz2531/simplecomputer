@@ -1,18 +1,14 @@
 TARGET = libMySimpleComputer.a
 CC = gcc
 
-CFLAGS = -Wall -Werror -Wextra -MMD -MP -I ../include/
+CFLAGS = -Wall -Werror -Wextra -MMD -MP -I ../include/ -I .. 
 
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(SRC))
 
-SRC_SC = $(wildcard sc_*.c)
-OBJ_SC = $(patsubst %.c, %.o, $(SRC_SC))
+all: $(TARGET) 
 
-
-all: $(TARGET) $(OBJ)
-
-$(TARGET) : $(OBJ_SC)
+$(TARGET) : $(OBJ)
 	ar rcs $@ $^
 
 %.o : %.c
@@ -21,4 +17,4 @@ $(TARGET) : $(OBJ_SC)
 -include *.d
 
 clean:
-	rm -rf *.o *.d *.a
+	rm -rf *.o *.d *.a *.gch

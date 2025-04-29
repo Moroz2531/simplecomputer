@@ -38,15 +38,27 @@ sc_commandDecode (int value, int *sign, int *command, int *operand)
 int
 sc_commandValidate (int command)
 {
-  int pieceCommand[]
-      = { 0, 1, 10, 11, 20, 21, 30, 31, 32, 33, 40, 41, 42, 43 };
-  int sizePieceCommand = sizeof (pieceCommand) / sizeof (*pieceCommand);
-
-  for (int i = 0; i < sizePieceCommand; i++)
-    if (command == pieceCommand[i])
+  switch (command)
+    {
+    case NOP:
+    case CPUINFO:
+    case READ:
+    case WRITE:
+    case LOAD:
+    case STORE:
+    case ADD:
+    case SUB:
+    case DIVIDE:
+    case MUL:
+    case JUMP:
+    case JNEG:
+    case JZ:
+    case HALT:
+    case SUBC:
+    case LOGLC:
       return 0;
-  for (int i = 51; i <= 76; i++)
-    if (command == i)
-      return 0;
+    default:
+      break;
+    }
   return -1;
 }

@@ -7,6 +7,25 @@ int sc_accumulatorGet (int *value);
 
 #ifndef SC_COMMAND_H
 #define SC_COMMAND_H
+enum
+{
+  NOP = 0,
+  CPUINFO = 1,
+  READ = 10,
+  WRITE = 11,
+  LOAD = 20,
+  STORE = 21,
+  ADD = 30,
+  SUB = 31,
+  DIVIDE = 32,
+  MUL = 33,
+  JUMP = 40,
+  JNEG = 41,
+  JZ = 42,
+  HALT = 43,
+  SUBC = 66,
+  LOGLC = 67,
+};
 int sc_commandEncode (int sign, int command, int operand, int *value);
 int sc_commandDecode (int value, int *sign, int *command, int *operand);
 int sc_commandValidate (int command);
@@ -21,6 +40,7 @@ int sc_icounterGet (int *value);
 
 #ifndef SC_MEMORY_H
 #define SC_MEMORY_H
+#define SIZE_MEMORY 128
 int sc_memoryInit ();
 int sc_memorySet (int address, int value);
 int sc_memoryGet (int address, int *value);
@@ -33,4 +53,21 @@ int sc_memoryLoad (char *filename);
 int sc_regInit ();
 int sc_regSet (int registr, int value);
 int sc_regGet (int registr, int *value);
+#endif
+
+#ifndef CPU_H
+#define CPU_H
+enum
+{
+  SET = 0,
+  GET = 1,
+};
+void IRC (int signum);
+void run_simplecomputer ();
+void CU ();
+void CU_reset ();
+
+int memoryController (int operand, int *value, int state);
+int ALU (int command, int operand);
+int IO (int command, int operand);
 #endif

@@ -18,14 +18,17 @@ sc_regSet (int registr, int value)
 {
   if (1 < value || value < 0 || 4 < registr || registr < 0)
     return -1;
-  sc_register |= SC_REGSET (registr, value);
+  if (value == 1)
+    sc_register |= SC_REGSET (registr, value);
+  else
+    sc_register &= ~(1 << registr);
   return 0;
 }
 
 int
 sc_regGet (int registr, int *value)
 {
-  if (5 < registr || registr < 0 || value == NULL)
+  if (4 < registr || registr < 0 || value == NULL)
     return -1;
   *value = SC_REGGET (registr, sc_register);
   return 0;
