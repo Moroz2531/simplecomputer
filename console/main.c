@@ -42,7 +42,7 @@ main (int argv, char *argc[])
   if (fd == -1)
     {
       printf ("Ошибка! Стандартный поток вывода закрыт\n");
-      return 1;
+      return -1;
     }
   close (fd);
 
@@ -52,7 +52,7 @@ main (int argv, char *argc[])
   if (rows < 27 || cols < 108)
     {
       printf ("Ошибка! Увеличьте размер терминала\n");
-      return 1;
+      return -1;
     }
 
   sc_memoryInit ();

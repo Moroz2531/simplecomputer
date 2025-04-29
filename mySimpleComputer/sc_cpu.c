@@ -12,7 +12,7 @@
 #include "mySimpleComputer.h"
 #include "myTerm.h"
 
-#define COUNT_PULSE_MEMORY 5
+#define COUNT_PULSE_MEMORY 2
 
 int tact_counter = 0;
 int flag_IRC_run = 0;
@@ -116,11 +116,14 @@ IO (int command, int operand)
 void
 run_simplecomputer ()
 {
-  int flag_ignore_pulse = 0, registr;
+  int registr;
 
-  sc_regGet (3, &flag_ignore_pulse);
-  if (flag_ignore_pulse)
-    return;
+  for (int i = 0; i < 5; i++)
+    {
+      sc_regGet (i, &registr);
+      if (registr)
+        return;
+    }
 
   init_generator ();
   signal (TACT, IRC);
