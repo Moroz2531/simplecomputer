@@ -1,38 +1,44 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "var.h"
 
-static void
-var_init (Var *v)
+static Var *
+var_create (int operand_1, int operand_2, int command)
 {
-  v->pos_string = 0;
-  v->length_1 = 0;
-  v->length_2 = 0;
-  v->length_command = 0;
+  Var *v = malloc (sizeof (Var));
+  if (v != NULL)
+    {
+      v->operand_1 = operand_1;
+      v->operand_2 = operand_2;
+      v->command = command;
 
-  v->prev = NULL;
-  v->next = NULL;
+      v->next = NULL;
+      v->prev = NULL;
+    }
+  return v;
 }
 
 Var *
-var_create (Var *v)
+var_add (Var **v, int operand_1, int operand_2, int command)
 {
-  Var *new_v = malloc (sizeof (Var));
-  var_init (new_v);
-
-  if (v != NULL)
+  Var *v_new = var_create (operand_1, operand_2, command);
+  if (*v != NULL)
     {
-      while (v->next != NULL)
-        v = v->next;
-      v->next = new_v;
-      new_v->prev = v;
+      while ((*v)->next != NULL)
+        *v = (*v)->next;
+      (*v)->next = v_new;
+      v_new->prev = *v;
     }
-  return new_v;
+  return v_new;
 }
 
 void
 var_free (Var *v)
 {
+  if (v == NULL)
+    return;
+
   Var *v_temp1_1 = v->prev, *v_temp2_1;
   Var *v_temp1_2 = v->next, *v_temp2_2;
 
@@ -51,37 +57,42 @@ var_free (Var *v)
 }
 
 int
-var_add (Var *v, int var, char ch)
+var_get_command (char *command)
 {
-  switch (var)
-    {
-    case OPERAND_1:
-    case OPERAND_2:
-      if (v->length_2 >= MAX_LENGTH_OPERAND)
-        return -1;
-      switch (var)
-        {
-        case OPERAND_1:
-          v->operand_1[v->length_1++] = ch;
-          v->operand_1[v->length_1] = '\0';
-          break;
-
-        default:
-          v->operand_2[v->length_2++] = ch;
-          v->operand_2[v->length_2] = '\0';
-        }
-      break;
-
-    case COMMAND:
-      if (v->length_command >= MAX_LENGTH_COMMAND)
-        return -1;
-      v->command[v->length_command++] = ch;
-      v->command[v->length_command] = '\0';
-      break;
-
-    default:
-      return -1;
-    };
-
-  return 0;
+  if (strcmp (command, "NOP") == 0)
+    return NOP;
+  else if (strcmp (command, "CPUINFO") == 0)
+    return CPUINFO;
+  else if (strcmp (command, "READ") == 0)
+    return READ;
+  else if (strcmp (command, "WRITE") == 0)
+    return WRITE;
+  else if (strcmp (command, "LOAD") == 0)
+    return LOAD;
+  else if (strcmp (command, "STORE") == 0)
+    return STORE;
+  else if (strcmp (command, "ADD") == 0)
+    return ADD;
+  else if (strcmp (command, "SUB") == 0)
+    return SUB;
+  else if (strcmp (command, "DIVIDE") == 0)
+    return DIVIDE;
+  else if (strcmp (command, "MUL") == 0)
+    return MUL;
+  else if (strcmp (command, "JUMP") == 0)
+    return JUMP;
+  else if (strcmp (command, "JNEG") == 0)
+    return JNEG;
+  else if (strcmp (command, "JZ") == 0)
+    return JZ;
+  else if (strcmp (command, "HALT") == 0)
+    return HALT;
+  else if (strcmp (command, "SUBC") == 0)
+    return SUBC;
+  else if (strcmp (command, "LOGLC") == 0)
+    return LOGLC;
+  else if (strcmp (command, "=") == 0)
+    return ASSIGMENT;
+  else
+    return UNKNOWN;
 }
