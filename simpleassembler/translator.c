@@ -2,35 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "string.h"
 #include "translator.h"
-#include "var.h"
 
 #define SC_ENCODE(x, y, z) x << 14 | y << 7 | z
 
 #define SIZE_MEMORY 128
 
-enum command
-{
-  NOP = 0,
-  CPUINFO = 1,
-  READ = 10,
-  WRITE = 11,
-  LOAD = 20,
-  STORE = 21,
-  ADD = 30,
-  SUB = 31,
-  DIVIDE = 32,
-  MUL = 33,
-  JUMP = 40,
-  JNEG = 41,
-  JZ = 42,
-  HALT = 43,
-  SUBC = 66,
-  LOGLC = 67,
-  ASSIGMENT = 128,
-};
-
-static int
+int
 command_encode (int sign, int command, int operand, int *value)
 {
   if (1 < sign || sign < 0 || __INT8_MAX__ < command || command < 0)
@@ -60,74 +39,28 @@ memory_save (int *memory, char *filename)
 static int
 memory_load (int *memory, Var *var)
 {
-  while (var->prev != NULL)
-    var = var->prev;
+  while (var->next != NULL)
+    var = var->next;
 
-  for (int operand[2], command, value; var != NULL; var = var->next)
+  int value;
+
+  while (var != NULL)
     {
-      if (var->length_1 == 0)
-        continue;
-
-      operand[0] = atoi (var->operand_1);
-      operand[1] = atoi (var->operand_2);
-
-      if (strcmp (var->command, "NOP"))
-        command = NOP;
-      else if (strcmp (var->command, "CPUINFO"))
-        command = CPUINFO;
-      else if (strcmp (var->command, "READ"))
-        command = READ;
-      else if (strcmp (var->command, "WRITE"))
-        command = WRITE;
-      else if (strcmp (var->command, "LOAD"))
-        command = LOAD;
-      else if (strcmp (var->command, "STORE"))
-        command = STORE;
-      else if (strcmp (var->command, "ADD"))
-        command = ADD;
-      else if (strcmp (var->command, "SUB"))
-        command = SUB;
-      else if (strcmp (var->command, "DIVIDE"))
-        command = DIVIDE;
-      else if (strcmp (var->command, "MUL"))
-        command = MUL;
-      else if (strcmp (var->command, "JUMP"))
-        command = JUMP;
-      else if (strcmp (var->command, "JNEG"))
-        command = JNEG;
-      else if (strcmp (var->command, "JZ"))
-        command = JZ;
-      else if (strcmp (var->command, "HALT"))
-        command = HALT;
-      else if (strcmp (var->command, "SUBC"))
-        command = SUBC;
-      else if (strcmp (var->command, "LOGLC"))
-        command = LOGLC;
-      else if (strcmp (var->command, "="))
-        command = ASSIGMENT;
-      else
-        return var->pos_string;
-
-      if (operand[0] < 0 || operand[0] >= SIZE_MEMORY)
-        return var->pos_string;
-
-      if (command == ASSIGMENT)
+      switch (var->command)
         {
-          if (operand[1] < 0)
+        case ASSIGMENT:
+          if (var->operand_2 < 0)
             {
-              operand[1] *= -1;
-              operand[1] |= (1 << 14);
+              var->operand_2 *= -1;
+              var->operand_2 |= (1 << 14);
             }
-          if (operand[1] > __SHRT_MAX__)
-            return var->pos_string;
-          memory[operand[0]] = operand[1];
+          memory[var->operand_1] = var->operand_2;
+          break;
+        default:
+          command_encode (0, var->command, var->operand_2, &value);
+          memory[var->operand_1] = value;
         }
-      else
-        {
-          if (command_encode (0, command, operand[1], &value))
-            return var->pos_string;
-          memory[operand[0]] = value;
-        }
+      var = var->prev;
     }
   return 0;
 }
@@ -147,23 +80,34 @@ add_extension_for_file (char *src)
   return dest;
 }
 
-int
-flags_set (short *flags, int pos)
+static void
+print_error (int err, int pos_string)
 {
-  *flags |= (1 << pos);
-  return 0;
+  switch (err)
+    {
+    case ERR_OPERAND:
+      fprintf (stderr, "%d: operand is wrong\n", pos_string);
+      break;
+    case ERR_COMMAND:
+      fprintf (stderr, "%d: command is wrong\n", pos_string);
+      break;
+    case ERR_CONST:
+      fprintf (stderr, "%d: const is wrong\n", pos_string);
+      break;
+    case ERR_COUNT_VAR:
+      fprintf (stderr, "%d: low/many variables\n", pos_string);
+      break;
+    case ERR_MEMORY:
+      fprintf (stderr, "%d: error program. Memory \n", pos_string);
+      break;
+    case ERR_FILE:
+      fprintf (stderr, "%d: file is not open/write\n", pos_string);
+      break;
+    default:
+      fprintf (stderr, "%d: Error\n", pos_string);
+      break;
+    };
 }
-
-int
-flags_get (short flags, int pos)
-{
-  return (flags >> pos) & 1;
-}
-
-#define SET_FLAGS_AND_INCREASE_SHIFT                                          \
-  flags_set (&flags_str, shift);                                              \
-  flags_set (&flags_str, shift_read);                                         \
-  shift--;
 
 int
 translator_simple_assembler (char *filename)
@@ -171,177 +115,78 @@ translator_simple_assembler (char *filename)
   FILE *file = fopen (filename, "r");
   if (file == NULL)
     {
-      fprintf (stderr, "File for reading does not open\n");
+      print_error (ERR_FILE, 0);
       return -1;
     }
 
-  short flags_str = 0, shift = 5;
-  const short shift_err = 8, shift_read = 9, shift_assigment = 10;
+  Var *var = NULL;
+  String *string = string_create ();
 
-  Var *var = var_create (NULL), *var_main = var;
-  if (var == NULL)
+  if (string == NULL)
     {
-      fprintf (stderr, "New var doesn`t create\n");
+      print_error (ERR_MEMORY, 0);
       return -1;
     }
 
-  /* for statistics (output errors) */
-  int pos_string = 1, pos_ch = 1;
-
+  short flag_comment = 0, flag_error = 0;
+  int pos_string = 1;
   char ch;
-  for (; (ch = getc (file)) != EOF; pos_ch++)
+
+  /* Обход всех строк, разбиение на токены и проверка синтаксиса */
+
+  while ((ch = getc (file)) != EOF)
     {
-      if (flags_get (flags_str, shift_read))
-        {
-          const short flags_main = flags_str & 0x7F;
-
-          if (ch != ' ' || ch != '\t')
-            {
-              switch (flags_main)
-                {
-                case 0x20:
-                  if (var_add (var, OPERAND_1, ch))
-                    flags_str |= (1 << shift_err);
-                  break;
-                case 0x38:
-                  if (var_add (var, OPERAND_2, ch))
-                    flags_str |= (1 << shift_err);
-                  break;
-                default:
-                  if (var_add (var, COMMAND, ch))
-                    flags_str |= (1 << shift_err);
-                  break;
-                }
-              if ((flags_str >> shift_err) & 1)
-                break;
-              continue;
-            }
-          else
-            flags_str = ~(1 << shift_read);
-        }
-      if (flags_get (flags_str, shift_assigment))
-        {
-          if (ch != ' ' || ch != '\t')
-            {
-              if (ch < '0' || ch > '9')
-                {
-                  flags_set (&flags_str, shift_err);
-                  break;
-                }
-              var_add (var, OPERAND_2, ch);
-              continue;
-            }
-          else
-            flags_str = ~(1 << shift_assigment);
-        }
-
       if (ch == '\n')
         {
-          printf ("1. %p\n", var);
-          var->pos_string = pos_string;
-          var = var_create (var_main);
-          printf ("2. %p\n", var);
-          if (var == NULL)
-            {
-              fprintf (stderr, "New var doesn`t create\n");
-              var_free (var_main);
-              return -1;
-            }
-          flags_str = 0;
-          shift = 5;
-          pos_ch = 0;
-          pos_string++;
-          continue;
-        }
-      if (flags_get (flags_str, 0))
-        continue;
+          if ((flag_error = string_parse (&var, string)))
+            break;
 
-      if (ch == ' ' || ch == '\t')
-        {
-          if (flags_str != 0 && flags_get (flags_str, 1) != 1)
-            flags_str |= (1 << shift);
-          continue;
+          string_reload (string);
+          pos_string++;
+          flag_comment = 0;
         }
-      if ((flags_str == 0 || flags_get (flags_str, 2))
-          && ('0' <= ch && ch <= '9'))
-        {
-          SET_FLAGS_AND_INCREASE_SHIFT
-          if (flags_str == 0)
-            var_add (var, OPERAND_1, ch);
-          else
-            var_add (var, OPERAND_2, ch);
-        }
-      else if ((flags_get (flags_str, 4))
-               && (('A' <= ch && ch <= 'Z') || ch == '='))
-        {
-          if (ch == '=')
-            {
-              var_add (var, COMMAND, ch);
-              flags_set (&flags_str, shift_assigment);
-              shift--;
-              continue;
-            }
-          SET_FLAGS_AND_INCREASE_SHIFT
-          var_add (var, COMMAND, ch);
-        }
-      else if ((flags_str == 0 || flags_get (flags_str, 1)) && ch == ';')
-        {
-          flags_set (&flags_str, 0);
-        }
-      else
-        {
-          flags_set (&flags_str, shift_err);
+      else if (ch == ';')
+        flag_comment = 1;
+
+      else if (flag_comment != 1)
+        if ((flag_error = string_add (string, ch)))
           break;
-        }
     }
   if (ch != EOF)
     fclose (file);
 
-  printf ("1\n");
-
-  if (flags_get (flags_str, shift_err))
+  if (flag_error)
     {
-      fprintf (stderr, "Error in line: %d; pos: %d\n", pos_string, pos_ch);
-      var_free (var_main);
+      print_error (flag_error, pos_string);
+      var_free (var);
+      string_free (string);
       return -1;
     }
 
-  printf ("2\n");
+  /* Подготовка названия файла и загрузка операндов в двоичный файл */
 
   char *filename_write = add_extension_for_file (filename);
   if (filename_write == NULL)
     {
-      fprintf (stderr, "In file name not add extension\n");
-      var_free (var_main);
+      print_error (ERR_MEMORY, pos_string);
+      var_free (var);
+      string_free (string);
       return -1;
     }
-  int memory[SIZE_MEMORY], pos_string_err;
+  int memory[SIZE_MEMORY] = { 0 };
 
-  printf ("3\n");
-
-  if ((pos_string_err = memory_load (memory, var_main)))
-    {
-      fprintf (stderr, "Error in line: %d\n", pos_string_err);
-      var_free (var_main);
-      free (filename_write);
-      return -1;
-    }
-
-  printf ("4\n");
+  memory_load (memory, var);
   if (memory_save (memory, filename_write))
     {
-      fprintf (stderr, "File for writing does not open/write\n");
-      var_free (var_main);
+      print_error (ERR_FILE, pos_string);
+      var_free (var);
+      string_free (string);
       free (filename_write);
       return -1;
     }
-
-  printf ("5\n");
-
-  var_free (var_main);
+  var_free (var);
+  string_free (string);
   free (filename_write);
-
-  printf ("6\n");
 
   return 0;
 }
