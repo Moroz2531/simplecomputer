@@ -59,6 +59,7 @@ main (int argv, char *argc[])
   sc_regInit ();
   sc_accumulatorInit ();
   sc_icounterInit ();
+  sc_cacheInit ();
   sc_regSet (3, 1);
 
   mt_clrscr ();
@@ -66,6 +67,9 @@ main (int argv, char *argc[])
 
   for (int i = 0; i < SIZE_MEMORY; i++)
     printCell (i, DEFAULT, DEFAULT);
+
+  for (int i = 0; i < COUNT_LINE; i++)
+    printCacheCell (i, 0);
 
   printFlags ();
   printAccumulator ();

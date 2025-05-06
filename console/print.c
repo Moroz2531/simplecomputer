@@ -350,3 +350,44 @@ printClearCell (int x, int y)
 
   return 0;
 }
+
+void
+printCacheCell (int line, int output)
+{
+  if (line < 0 || line >= COUNT_LINE)
+    return;
+
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  int value, num_line;
+  char buf[4];
+
+  mt_gotoXY (2, 20 + line);
+  if (output == 1)
+    {
+      sc_cacheLineGet (10 * line, &value, &num_line);
+      snprintf (buf, 4, "%02d", num_line);
+      write (fd, buf, 4);
+    }
+  else
+    write (fd, "xx", 2);
+  write (fd, ":", 1);
+
+  char bufOperand[3], bufCommand[3];
+  int sign, command, operand;
+
+  for (int i = 0; i < CACHE_LINE; i++)
+    {
+      sc_cacheLineGet (CACHE_LINE * line + i, &value, &num_line);
+      sc_commandDecode (value, &sign, &command, &operand);
+      snprintf (bufCommand, 3, "%02X", command);
+      snprintf (bufOperand, 3, "%02X", operand);
+      mt_gotoXY (7 + (6 * i), 20 + line);
+      write (fd, sign == 0 ? "+" : "-", 1);
+      write (fd, bufCommand, 2);
+      write (fd, bufOperand, 2);
+    }
+  close (fd);
+}
