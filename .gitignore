@@ -6,3 +6,5 @@ console/memSave
 .vscode/
 */*.a
 console/save
+simpleassembler/translator
+simpleassembler/1
