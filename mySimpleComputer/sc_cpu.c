@@ -12,7 +12,8 @@
 #include "mySimpleComputer.h"
 #include "myTerm.h"
 
-#define COUNT_PULSE_MEMORY 2
+#define COUNT_PULSE_RAM 11
+#define COUNT_PULSE_CASHE_MEMORY 2
 
 int tact_counter = 0;
 int flag_IRC_run = 0;
@@ -43,9 +44,9 @@ memoryController (int operand, int *value, int state)
 
   if (value == NULL)
     return -1;
-  tact_counter = COUNT_PULSE_MEMORY;
+  tact_counter = COUNT_PULSE_CASHE_MEMORY;
 
-  int temp_value;
+  int temp_value, flag_cache_miss;
 
   while (1)
     {
@@ -55,23 +56,30 @@ memoryController (int operand, int *value, int state)
       if (flag_IRC_run)
         {
           flag_IRC_run = 0;
-          switch (state)
+          if (state == SET)
+            flag_cache_miss = sc_cacheSet (operand, *value);
+          else
+            flag_cache_miss = sc_cacheGet (operand, &temp_value);
+
+          if (flag_cache_miss == -1)
             {
-            case SET:
-              if (sc_memorySet (operand, *value))
-                return -1;
-              break;
-            case GET:
-              if (sc_memoryGet (operand, &temp_value))
-                return -1;
-              break;
-            default:
+              sc_regSet (2, 1);
               return -1;
-            };
-          *value = temp_value;
+            }
+          else if (flag_cache_miss == -2)
+            {
+              tact_counter = COUNT_PULSE_RAM;
+              sc_cacheLineLoad (operand);
+              continue;
+            }
+          else if (state == GET)
+            *value = temp_value;
           break;
         }
     }
+  int line;
+  sc_getLine (operand, &line);
+  printCacheCell (0, 1);
   return 0;
 }
 

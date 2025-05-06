@@ -71,3 +71,16 @@ int memoryController (int operand, int *value, int state);
 int ALU (int command, int operand);
 int IO (int command, int operand);
 #endif
+
+#ifndef SC_CACHE_H
+#define SC_CACHE_H
+#define SIZE_CACHE_MEMORY 50
+#define CACHE_LINE 10
+#define COUNT_LINE 5
+int sc_cacheInit ();
+int sc_cacheLineGet (int address, int *value, int *number_line);
+int sc_cacheLineLoad (int address);
+int sc_cacheSet (int address, int value);
+int sc_cacheGet (int address, int *value);
+int sc_getLine (int address, int *line);
+#endif
