@@ -134,16 +134,18 @@ translator_simple_assembler (char *filename)
 
   /* Обход всех строк, разбиение на токены и проверка синтаксиса */
 
-  while ((ch = getc (file)) != EOF)
+  while (1)
     {
-      if (ch == '\n')
+      ch = getc (file);
+      if (ch == '\n' || ch == EOF)
         {
           if ((flag_error = string_parse (&var, string)))
             break;
-
           string_reload (string);
           pos_string++;
           flag_comment = 0;
+          if (ch == EOF)
+            break;
         }
       else if (ch == ';')
         flag_comment = 1;
