@@ -2,12 +2,25 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "myBigChars.h"
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
 
 #include "print.h"
+
+struct itimerval nval1, oval1;
+
+static void
+init_generator ()
+{
+  /* generate 2 pulse per second */
+  nval1.it_interval.tv_sec = 0;
+  nval1.it_interval.tv_usec = 500000;
+  nval1.it_value.tv_sec = 0;
+  nval1.it_value.tv_usec = 500000;
+}
 
 void
 printCell (int address, enum colors fg, enum colors bg)
@@ -221,7 +234,10 @@ printTerm (int address, int input)
     {
       mt_gotoXY (73, 24);
       rk_readvalue (&value);
-      sc_memorySet (address, value);
+      init_generator();
+      setitimer (ITIMER_REAL, &nval1, &oval1);
+      memoryController(address, &value, SET);
+      alarm (0);
       sc_memoryGet (address, &value);
       printCell (address, DEFAULT, DEFAULT);
       sc_commandDecode (value, &sign, &command, &operand);

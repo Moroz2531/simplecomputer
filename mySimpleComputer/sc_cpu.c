@@ -77,9 +77,9 @@ memoryController (int operand, int *value, int state)
           break;
         }
     }
-  int line;
+  int line = 0;
   sc_getLine (operand, &line);
-  printCacheCell (0, 1);
+  printCacheCell (line, 1);
   return 0;
 }
 

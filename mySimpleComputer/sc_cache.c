@@ -12,7 +12,7 @@ sc_cacheInit ()
     cache_memory[i] = 0;
   for (int i = 0; i < COUNT_LINE; i++)
     {
-      num_line[i] = 0;
+      num_line[i] = 128;
       hit_counter[i] = 0;
     }
   return 0;
@@ -84,6 +84,8 @@ get_max_value_hit_counter ()
   return max_value;
 }
 
+#include <stdio.h>
+
 int
 sc_cacheLineLoad (int address)
 {
@@ -114,7 +116,7 @@ sc_cacheLineLoad (int address)
   restore_hit_counter ();
 
   for (int i = number_line; i < (number_line + 10) && i < SIZE_MEMORY; i++)
-    sc_memoryGet (i, &cache_memory[min_line + (i % 10)]);
+    sc_memoryGet (i, &cache_memory[min_line * CACHE_LINE + (i % 10)]);
   return 0;
 }
 
@@ -194,7 +196,7 @@ sc_getLine (int address, int *line)
     return -1;
   int l = address - (address % 10);
   for (int i = 0; i < COUNT_LINE; i++)
-    if (l == hit_counter[i])
+    if (l == num_line[i])
       {
         *line = i;
         break;
