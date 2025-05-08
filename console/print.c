@@ -17,9 +17,9 @@ init_generator ()
 {
   /* generate 2 pulse per second */
   nval1.it_interval.tv_sec = 0;
-  nval1.it_interval.tv_usec = 500000;
+  nval1.it_interval.tv_usec = 100000;
   nval1.it_value.tv_sec = 0;
-  nval1.it_value.tv_usec = 500000;
+  nval1.it_value.tv_usec = 100000;
 }
 
 void
