@@ -12,7 +12,8 @@ void printTactCounter (int tact);
 void printTerm (int address, int input);
 void printCommand ();
 void printBigCell (int address, int big[36]);
-int printClearCell (int x, int y);
 void printHelpInformation ();
+void printCacheCell (int line, int output);
+int printClearCell (int x, int y);
 
 #endif

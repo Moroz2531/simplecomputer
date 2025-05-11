@@ -2,12 +2,25 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "myBigChars.h"
 #include "myReadKey.h"
 #include "mySimpleComputer.h"
 
 #include "print.h"
+
+struct itimerval nval1, oval1;
+
+static void
+init_generator ()
+{
+  /* generate 2 pulse per second */
+  nval1.it_interval.tv_sec = 0;
+  nval1.it_interval.tv_usec = 100000;
+  nval1.it_value.tv_sec = 0;
+  nval1.it_value.tv_usec = 100000;
+}
 
 void
 printCell (int address, enum colors fg, enum colors bg)
@@ -221,7 +234,10 @@ printTerm (int address, int input)
     {
       mt_gotoXY (73, 24);
       rk_readvalue (&value);
-      sc_memorySet (address, value);
+      init_generator();
+      setitimer (ITIMER_REAL, &nval1, &oval1);
+      memoryController(address, &value, SET);
+      alarm (0);
       sc_memoryGet (address, &value);
       printCell (address, DEFAULT, DEFAULT);
       sc_commandDecode (value, &sign, &command, &operand);
@@ -349,4 +365,45 @@ printClearCell (int x, int y)
   mt_gotoXY (x, y);
 
   return 0;
+}
+
+void
+printCacheCell (int line, int output)
+{
+  if (line < 0 || line >= COUNT_LINE)
+    return;
+
+  int fd = open ("/dev/stdout", O_WRONLY);
+  if (fd == -1)
+    return;
+
+  int value, num_line;
+  char buf[4];
+
+  mt_gotoXY (2, 20 + line);
+  if (output == 1)
+    {
+      sc_cacheLineGet (10 * line, &value, &num_line);
+      snprintf (buf, 4, "%02d", num_line);
+      write (fd, buf, 4);
+    }
+  else
+    write (fd, "xx", 2);
+  write (fd, ":", 1);
+
+  char bufOperand[3], bufCommand[3];
+  int sign, command, operand;
+
+  for (int i = 0; i < CACHE_LINE; i++)
+    {
+      sc_cacheLineGet (CACHE_LINE * line + i, &value, &num_line);
+      sc_commandDecode (value, &sign, &command, &operand);
+      snprintf (bufCommand, 3, "%02X", command);
+      snprintf (bufOperand, 3, "%02X", operand);
+      mt_gotoXY (7 + (6 * i), 20 + line);
+      write (fd, sign == 0 ? "+" : "-", 1);
+      write (fd, bufCommand, 2);
+      write (fd, bufOperand, 2);
+    }
+  close (fd);
 }
