@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "myBigChars.h"
 #include "myReadKey.h"
@@ -234,9 +234,9 @@ printTerm (int address, int input)
     {
       mt_gotoXY (73, 24);
       rk_readvalue (&value);
-      init_generator();
+      init_generator ();
       setitimer (ITIMER_REAL, &nval1, &oval1);
-      memoryController(address, &value, SET);
+      memoryController (address, &value, SET);
       alarm (0);
       sc_memoryGet (address, &value);
       printCell (address, DEFAULT, DEFAULT);
