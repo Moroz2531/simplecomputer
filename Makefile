@@ -40,6 +40,9 @@ build:
 	$(MAKE) -C $(PATH_MYBIGCHARS) all
 	$(MAKE) -C $(PATH_MYREADKEY) all
 
+format:
+	find . -type f -name *.[ch] | xargs clang-format --style GNU -i --verbose
+
 clean:
 	$(MAKE) -C $(PATH_MYTERM) clean
 	$(MAKE) -C $(PATH_MYSIMPLECOMPUTER) clean
@@ -48,4 +51,4 @@ clean:
 	$(MAKE) -C $(PATH_MYREADKEY) clean
 	rm -rf $(PATH_INCLUDE)*.gch $(PATH_TARGET) $(PATH_FONT)
 
-.PHONY: all build clean
+.PHONY: all build format clean
