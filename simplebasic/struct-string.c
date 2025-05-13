@@ -5,7 +5,7 @@
 
 enum
 {
-  CAPACITY = 64, // начальный размер строки в байтах
+  CAPACITY = 32, // начальный размер строки в байтах
   RESIZE_FACTOR = 2, // множитель увеличения размера строки
 };
 
@@ -24,6 +24,100 @@ string_create ()
         free (str);
     }
   return str;
+}
+
+String_array *
+string_array_create (String *str)
+{
+  String_array *str_arr = malloc (sizeof (String_array));
+  static int index = 1;
+  if (str_arr != NULL)
+    {
+      str_arr->str = str;
+      str_arr->str_is_read = 0;
+      str_arr->index = index++;
+      str_arr->prev = NULL;
+      str_arr->next = NULL;
+    }
+  return str_arr;
+}
+
+String_array *
+string_array_add (String_array *str_arr, String *str)
+{
+  if (str == NULL)
+    return NULL;
+
+  String_array *new = string_array_create (str);
+  if (str_arr != NULL)
+    {
+      while (str_arr->next != NULL)
+        str_arr = str_arr->next;
+      str_arr->next = new;
+      if (new != NULL)
+        new->prev = str_arr;
+    }
+  return new;
+}
+
+String_array *
+string_array_get_string_index (String_array *arr, int index)
+{
+  if (arr != NULL)
+    {
+      if (arr->index < index)
+        while (arr != NULL && arr->index < index)
+          {
+            if (arr->index == index)
+              return arr;
+            arr = arr->next;
+          }
+      else if (arr->index > index)
+        while (arr != NULL && arr->index > index)
+          {
+            if (arr->index == index)
+              return arr;
+            arr = arr->prev;
+          }
+      else
+        return arr;
+    }
+  return arr;
+}
+
+int
+string_array_set_string_is_read (String_array *str)
+{
+  if (str == NULL)
+    return -1;
+  str->str_is_read = 1;
+  return 0;
+}
+
+void
+string_array_free (String_array *str_arr)
+{
+  if (str_arr == NULL)
+    return;
+  String_array *prev = str_arr->prev, *next = str_arr->next, *temp = NULL;
+
+  string_free (str_arr->str);
+  free (str_arr);
+
+  while (prev != NULL)
+    {
+      temp = prev->prev;
+      string_free (prev->str);
+      free (prev);
+      prev = temp;
+    }
+  while (next != NULL)
+    {
+      temp = next->next;
+      string_free (next->str);
+      free (next);
+      next = temp;
+    }
 }
 
 /* увеличение размера строки в RESIZE_FACTOR */
