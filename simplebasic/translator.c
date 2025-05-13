@@ -64,65 +64,66 @@ add_extension_for_file (char *src)
   return dest;
 }
 
-/* получение всех номеров строк. Строки сохраняются в Var */
-/* первый проход по коду */
-Var *
-get_num_string (FILE *file)
+/* Получение всех строк из файла */
+String_array *
+get_string_array (FILE *file)
 {
   if (file == NULL)
     return NULL;
 
-  String *str = string_create ();
+  String_array *str = string_array_add (NULL, string_create ());
+  String_array *str_temp = str;
   if (str == NULL)
     return NULL;
-  Var *v = NULL, *v_main = NULL;
 
+  int index;
   for (char ch = getc (file);; ch = getc (file))
     {
       if (ch == '\n' || ch == EOF)
         {
-          char *ptr = strtok (str->string, " \t");
-          int num_string = atoi (ptr);
-
-          v = var_add (&v, num_string, 0, 0, 0);
-          if (v->prev == NULL)
-            v_main = v;
-          if (v->prev != NULL && v->prev->num_string >= v->num_string)
+          index = atoi (str_temp->str->string);
+          if (str_temp->prev != NULL && str_temp->prev->index >= index)
             {
-              print_error ("error number string", v->num_string);
-              var_free (v);
-              string_free (str);
+              print_error ("error in number string", str_temp->index);
+              string_array_free (str);
+              return NULL;
+            }
+          str_temp->index = index;
+          str_temp = string_array_add (str_temp, string_create ());
+          if (str_temp == NULL)
+            {
+              print_error ("string array - not malloc", -1);
+              string_array_free (str);
               return NULL;
             }
           if (ch == EOF)
             break;
-          string_reload (str);
-          continue;
         }
-      string_add (str, ch);
+      string_add (str_temp->str, ch);
     }
-  string_free (str);
-
-  return v_main;
+  return str;
 }
 
 static int
 simplebasic_get_code_command (char *src)
 {
-  if (strcmp (src, "REM") == 0)
-    return REM;
-  else if (strcmp (src, "INPUT") == 0)
-    return INPUT;
-  else if (strcmp (src, "OUTPUT") == 0)
-    return OUTPUT;
-  else if (strcmp (src, "GOTO") == 0)
-    return GOTO;
-  else if (strcmp (src, "IF") == 0)
-    return IF;
-  else if (strcmp (src, "LET") == 0)
-    return LET;
-  else if (strcmp (src, "END") == 0)
-    return END;
+  if (src != NULL)
+    {
+      if (strcmp (src, "REM") == 0)
+        return REM;
+      else if (strcmp (src, "INPUT") == 0)
+        return INPUT;
+      else if (strcmp (src, "OUTPUT") == 0)
+        return OUTPUT;
+      else if (strcmp (src, "GOTO") == 0)
+        return GOTO;
+      else if (strcmp (src, "IF") == 0)
+        return IF;
+      else if (strcmp (src, "LET") == 0)
+        return LET;
+      else if (strcmp (src, "END") == 0)
+        return END;
+    }
   return UNKNOWN;
 }
 
@@ -185,10 +186,12 @@ file_load (FILE *file, Var *v)
 
 /* parse строки */
 static int
-string_parse (String *str, Var *src, Var **dest)
+string_parse (String_array *str_arr, Var **dest)
 {
-  if (str == NULL || src == NULL)
+  if (str_arr == NULL || str_arr->str == NULL || str_arr->str->string == NULL)
     return -1;
+
+  String *str = str_arr->str;
 
   /* адреса для simplecomputer */
   static int address_command = 0, address_operand = SIZE_MEMORY - 1;
@@ -197,13 +200,16 @@ string_parse (String *str, Var *src, Var **dest)
   static void *var['Z' - 'A' + 1] = { NULL };
 
   const char delim[] = " \t\n";
-  char *ptr = strtok (str->string, delim);
-
+  char *ptr;
+  if ((ptr = strtok (str->string, delim)) == NULL)
+    return 0;
   ptr = strtok (NULL, delim);
 
-  int command = simplebasic_get_code_command (ptr);
-  int addr_operand;
+  int command = simplebasic_get_code_command (ptr), addr_operand;
   Var *v_temp = NULL;
+
+  if (command == UNKNOWN)
+    return -1;
 
   switch (command)
     {
@@ -226,7 +232,7 @@ string_parse (String *str, Var *src, Var **dest)
           else
             addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
 
-          v_temp = var_add (dest, src->num_string, address_command++,
+          v_temp = var_add (dest, str_arr->index, address_command++,
                             addr_operand, READ);
           var[ptr[0] - 'A'] = (void *)v_temp;
           break;
@@ -234,7 +240,7 @@ string_parse (String *str, Var *src, Var **dest)
           if (var[ptr[0] - 'A'] == NULL)
             return -1;
           addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
-          v_temp = var_add (dest, src->num_string, address_command++,
+          v_temp = var_add (dest, str_arr->index, address_command++,
                             addr_operand, WRITE);
         }
       break;
@@ -250,7 +256,7 @@ string_parse (String *str, Var *src, Var **dest)
     case END:
       if (strtok (NULL, delim) != NULL)
         return -1;
-      v_temp = var_add (dest, src->num_string, address_command++, 0, HALT);
+      v_temp = var_add (dest, str_arr->index, address_command++, 0, HALT);
       break;
     default:
       return -1;
@@ -267,47 +273,28 @@ translator_simple_basic (char *filename)
 
   FILE *file = fopen (filename, "r");
   if (file == NULL)
-    PRINT_ERROR ("file is not open", 0)
+    PRINT_ERROR ("file is not open", -1)
 
-  String *str = string_create ();
+  String_array *str = get_string_array (file), *str_temp = str;
+  Var *var_for_write = NULL;
   if (str == NULL)
     {
-      fclose (file);
-      PRINT_ERROR ("string is not create", 0)
+      if (file != NULL)
+        fclose (file);
+      return -1;
     }
-
-  Var *v = get_num_string (file), *v_write = NULL;
-  if (v == NULL)
+  while (str_temp != NULL)
     {
-      fclose (file);
-      string_free (str);
-      PRINT_ERROR ("var is not create", 0)
-    }
-  file = fopen (filename, "r");
-
-  /* записываем всю строку в str */
-  char ch = getc (file);
-  for (;; ch = getc (file))
-    {
-      if (ch == '\n' || ch == EOF)
+      if (string_parse (str_temp, &var_for_write))
         {
-          if (string_parse (str, v, &v_write))
-            {
-              var_free (v_write);
-              string_free (str);
-              fclose (file);
-              print_error ("Error in line", v->num_string);
-              var_free (v);
-              return -1;
-            }
-          if (v->next != NULL)
-            v = v->next;
-          string_reload (str);
-          if (ch == EOF)
-            break;
+          print_error ("error in line", str_temp->index);
+          string_array_free (str);
+          var_free (var_for_write);
+          return -1;
         }
-      string_add (str, ch);
+      str_temp = str_temp->next;
     }
+  string_array_free (str);
 
   /* создание файла и запись в файл */
 
@@ -315,12 +302,13 @@ translator_simple_basic (char *filename)
   FILE *file_write = fopen (filename_for_write, "w");
 
   if (file_write != NULL)
-    file_load (file_write, v_write);
-  free (filename_for_write);
-  var_free (v);
-  var_free (v_write);
-  string_free (str);
-  fclose (file_write);
+    {
+      file_load (file_write, var_for_write);
+      fclose (file_write);
+    }
+  if (filename_for_write != NULL)
+    free (filename_for_write);
+  var_free (var_for_write);
 
   return 0;
 }
