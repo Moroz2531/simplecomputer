@@ -3,15 +3,12 @@
 #include "var.h"
 
 static Var *
-var_create (int num, int operand_1, int operand_2, int command)
+var_create (int num_string, int op_1, int op_2, int command)
 {
   Var *v = malloc (sizeof (Var));
   if (v != NULL)
     {
-      v->num_string = num;
-      v->operand_1 = operand_1;
-      v->operand_2 = operand_2;
-      v->command = command;
+      var_set (v, num_string, op_1, op_2, command);
 
       v->next = NULL;
       v->prev = NULL;
@@ -20,9 +17,9 @@ var_create (int num, int operand_1, int operand_2, int command)
 }
 
 Var *
-var_add (Var **v, int num_string)
+var_add (Var **v, int num_string, int op_1, int op_2, int command)
 {
-  Var *v_new = var_create (num_string, 0, 0, 0);
+  Var *v_new = var_create (num_string, op_1, op_2, command);
   if (v != NULL && *v != NULL)
     {
       while ((*v)->next != NULL)
@@ -34,12 +31,12 @@ var_add (Var **v, int num_string)
 }
 
 int
-var_set (Var *v, int operand_1, int operand_2, int command, char var_name)
+var_set (Var *v, int num_string, int op_1, int op_2, int command)
 {
-  v->operand_1 = operand_1;
-  v->operand_2 = operand_2;
+  v->num_string = num_string;
+  v->operand_1 = op_1;
+  v->operand_2 = op_2;
   v->command = command;
-  v->var_name = var_name;
   return 0;
 }
 

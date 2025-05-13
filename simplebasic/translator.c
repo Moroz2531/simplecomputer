@@ -84,7 +84,7 @@ get_num_string (FILE *file)
           char *ptr = strtok (str->string, " \t");
           int num_string = atoi (ptr);
 
-          v = var_add (&v, num_string);
+          v = var_add (&v, num_string, 0, 0, 0);
           if (v->prev == NULL)
             v_main = v;
           if (v->prev != NULL && v->prev->num_string >= v->num_string)
@@ -190,10 +190,10 @@ string_parse (String *str, Var *src, Var **dest)
   if (str == NULL || src == NULL)
     return -1;
 
-  /* адрес для simplecomputer */
+  /* адреса для simplecomputer */
   static int address_command = 0, address_operand = SIZE_MEMORY - 1;
 
-  /* адреса переменных (исключает повторения в коде) */
+  /* адреса переменных (исключает повторения переменных в коде) */
   static void *var['Z' - 'A' + 1] = { NULL };
 
   const char delim[] = " \t\n";
@@ -218,24 +218,24 @@ string_parse (String *str, Var *src, Var **dest)
         return -1;
       if (strtok (NULL, delim) != NULL)
         return -1;
-      if (var[ptr[0] - 'A'] == NULL)
-        {
-          v_temp = var_add (dest, 0);
-          var[ptr[0] - 'A'] = (void *)v_temp;
-          addr_operand = address_operand--;
-        }
-      else
-        {
-          v_temp = var_add (dest, 0);
-          addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
-        }
       switch (command)
         {
         case INPUT:
-          var_set (v_temp, address_command++, addr_operand, READ, ptr[0]);
+          if (var[ptr[0] - 'A'] == NULL)
+            addr_operand = address_operand--;
+          else
+            addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
+
+          v_temp = var_add (dest, src->num_string, address_command++,
+                            addr_operand, READ);
+          var[ptr[0] - 'A'] = (void *)v_temp;
           break;
         default:
-          var_set (v_temp, address_command++, addr_operand, WRITE, ptr[0]);
+          if (var[ptr[0] - 'A'] == NULL)
+            return -1;
+          addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
+          v_temp = var_add (dest, src->num_string, address_command++,
+                            addr_operand, WRITE);
         }
       break;
     case GOTO:
@@ -250,8 +250,7 @@ string_parse (String *str, Var *src, Var **dest)
     case END:
       if (strtok (NULL, delim) != NULL)
         return -1;
-      v_temp = var_add (dest, 0);
-      var_set (v_temp, address_command++, 0, HALT, '0');
+      v_temp = var_add (dest, src->num_string, address_command++, 0, HALT);
       break;
     default:
       return -1;
@@ -294,11 +293,12 @@ translator_simple_basic (char *filename)
         {
           if (string_parse (str, v, &v_write))
             {
-              var_free (v);
               var_free (v_write);
               string_free (str);
               fclose (file);
-              PRINT_ERROR ("Error in line", v->num_string)
+              print_error ("Error in line", v->num_string);
+              var_free (v);
+              return -1;
             }
           if (v->next != NULL)
             v = v->next;

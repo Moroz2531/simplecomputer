@@ -3,7 +3,6 @@
 
 typedef struct Var
 {
-  char var_name;
   int num_string;
   int operand_1, operand_2, command;
 
@@ -12,9 +11,9 @@ typedef struct Var
 
 } Var;
 
-Var *var_add (Var **v, int num_string);
+Var *var_add (Var **v, int num_string, int op_1, int op_2, int command);
 
-int var_set (Var *v, int operand_1, int operand_2, int command, char var_name);
+int var_set (Var *v, int num_string, int op_1, int op_2, int command);
 int var_check (char ch);
 int var_del (Var **v);
 
