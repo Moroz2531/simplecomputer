@@ -80,17 +80,30 @@ get_string_array (FILE *file)
     {
       if (ch == '\n' || ch == EOF)
         {
-          str_temp = string_array_add (str_temp, string_create ());
-          if (str_temp == NULL)
+          if (str_temp->str->size != 0)
             {
-              print_error ("string array - not malloc", -1);
-              string_array_free (str);
-              return NULL;
+              int index = atoi (str_temp->str->string);
+              if (str_temp->prev != NULL && str_temp->prev->index >= index)
+                {
+                  print_error ("error in number string", index);
+                  string_array_free (str);
+                  return NULL;
+                }
+              str_temp->index = index;
+
+              str_temp = string_array_add (str_temp, string_create ());
+              if (str_temp == NULL)
+                {
+                  print_error ("string array - not malloc", -1);
+                  string_array_free (str);
+                  return NULL;
+                }
             }
           if (ch == EOF)
             break;
         }
-      string_add (str_temp->str, ch);
+      else
+        string_add (str_temp->str, ch);
     }
   return str;
 }
@@ -181,30 +194,23 @@ file_load (FILE *file, String_array *str)
 static int
 string_parse (String_array **s_arr)
 {
-  String_array *str_arr = *s_arr;
+  String_array *str_arr = *s_arr, *str_arr_temp = str_arr;
   String *str = str_arr->str;
   if (str_arr == NULL || str_arr->str == NULL || str_arr->str->string == NULL)
     {
       print_error ("str_arr is null", -1);
       return -1;
     }
-
   if (str_arr->str_is_read)
     return 0;
   str_arr->str_is_read = 1;
+
+  static Var *ptr_token_for_goto = NULL;
 
   const char delim[] = " \t\n";
   char *ptr;
   if ((ptr = strtok (str->string, delim)) == NULL)
     return 0;
-
-  int index = atoi (ptr);
-  if (str_arr->prev != NULL && str_arr->prev->index >= index)
-    {
-      print_error ("error in number string", index);
-      return -1;
-    }
-  str_arr->index = index;
 
   /* адреса для simplecomputer */
   static int address_command = 0, address_operand = SIZE_MEMORY - 1;
@@ -218,7 +224,7 @@ string_parse (String_array **s_arr)
 
   ptr = strtok (NULL, delim);
 
-  int command = simplebasic_get_code_command (ptr), addr_operand;
+  int command = simplebasic_get_code_command (ptr), addr_operand, value;
 
   if (command == UNKNOWN)
     return -1;
@@ -226,6 +232,11 @@ string_parse (String_array **s_arr)
   switch (command)
     {
     case REM:
+      if (ptr_token_for_goto != NULL)
+        {
+          print_error ("goto is wrong", str_arr->index);
+          return -1;
+        }
       return 0;
     case INPUT:
     case OUTPUT:
@@ -253,7 +264,46 @@ string_parse (String_array **s_arr)
         }
       break;
     case GOTO:
-      break;
+      ptr = strtok (NULL, delim);
+      value = atoi (ptr);
+      str_arr_temp = string_array_get_string_index (str_arr, value);
+      if (str_arr_temp == NULL)
+        return -1;
+      if (str_arr_temp->str_is_read)
+        {
+          if (str_arr_temp != str_arr)
+            {
+              if (str_arr_temp->token == NULL)
+                {
+                  print_error ("goto is wrong", str_arr_temp->index);
+                  return -1;
+                }
+              var_add (&str_arr->token, address_command++,
+                       str_arr_temp->token->operand_1, JUMP);
+            }
+          else
+            {
+              address_command++;
+              var_add (&str_arr->token, address_command, address_command,
+                       JUMP);
+            }
+          if (ptr_token_for_goto != NULL)
+            {
+              ptr_token_for_goto->operand_2 = str_arr->token->operand_1;
+              ptr_token_for_goto = NULL;
+            }
+        }
+      else
+        {
+          var_add (&str_arr->token, address_command++, -1, JUMP);
+          if (ptr_token_for_goto != NULL)
+            ptr_token_for_goto->operand_2 = str_arr->token->operand_1;
+          ptr_token_for_goto = str_arr->token;
+        }
+      if (strtok (NULL, delim) != NULL)
+        return -1;
+      *s_arr = str_arr_temp;
+      return 0;
     case IF:
       /* НЕОБХОДИМО ЭТОТ БЛОК РЕАЛИЗОВАТЬ */
       break;
@@ -268,6 +318,11 @@ string_parse (String_array **s_arr)
     };
   if (strtok (NULL, delim) != NULL)
     return -1;
+  if (ptr_token_for_goto != NULL)
+    {
+      ptr_token_for_goto->operand_2 = str_arr->token->operand_1;
+      ptr_token_for_goto = NULL;
+    }
   return 0;
 }
 
@@ -281,7 +336,7 @@ translator_simple_basic (char *filename)
   if (file == NULL)
     PRINT_ERROR ("file is not open", -1)
 
-  String_array *str = get_string_array (file), *str_temp = str;
+  String_array *str = get_string_array (file), *str_temp = str, *cur = NULL;
   if (str == NULL)
     {
       if (file != NULL)
@@ -290,12 +345,15 @@ translator_simple_basic (char *filename)
     }
   while (str_temp != NULL)
     {
+      cur = str_temp;
       if (string_parse (&str_temp))
         {
           print_error ("error in line", str_temp->index);
           string_array_free (str);
           return -1;
         }
+      if (cur != str_temp)
+        continue;
       str_temp = str_temp->next;
     }
 
