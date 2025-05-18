@@ -1,0 +1,92 @@
+#include <stdlib.h>
+
+#include "var.h"
+
+static Var *
+var_create (int op_1, int op_2, int command)
+{
+  Var *v = malloc (sizeof (Var));
+  if (v != NULL)
+    {
+      var_set (v, op_1, op_2, command);
+
+      v->next = NULL;
+      v->prev = NULL;
+    }
+  return v;
+}
+
+Var *
+var_add (Var **v, int op_1, int op_2, int command)
+{
+  Var *v_new = var_create (op_1, op_2, command);
+  if (v != NULL && *v != NULL)
+    {
+      Var *v_temp = *v;
+      while (v_temp->next != NULL)
+        v_temp = v_temp->next;
+      v_temp->next = v_new;
+      v_new->prev = v_temp;
+    }
+  else if (v != NULL)
+    *v = v_new;
+
+  return v_new;
+}
+
+int
+var_set (Var *v, int op_1, int op_2, int command)
+{
+  v->operand_1 = op_1;
+  v->operand_2 = op_2;
+  v->command = command;
+  return 0;
+}
+
+int
+var_del (Var **v)
+{
+  if (v != NULL && *v != NULL)
+    {
+      Var *v_prev = (*v)->prev, *v_next = (*v)->next;
+      free (*v);
+      if (v_prev != NULL)
+        v_prev->next = v_next;
+      if (v_next != NULL)
+        v_next->prev = v_prev;
+    }
+  return 0;
+}
+
+int
+var_check (char ch)
+{
+  if ('A' <= ch && ch <= 'Z')
+    return 0;
+  return -1;
+}
+
+void
+var_free (Var *v)
+{
+  if (v == NULL)
+    return;
+
+  Var *v_temp1_1 = v->prev, *v_temp2_1;
+  Var *v_temp1_2 = v->next, *v_temp2_2;
+
+  free (v);
+
+  while (v_temp1_1 != NULL)
+    {
+      v_temp2_1 = v_temp1_1->prev;
+      free (v_temp1_1);
+      v_temp1_1 = v_temp2_1;
+    }
+  while (v_temp1_2 != NULL)
+    {
+      v_temp2_2 = v_temp1_2->next;
+      free (v_temp1_2);
+      v_temp1_2 = v_temp2_2;
+    }
+}

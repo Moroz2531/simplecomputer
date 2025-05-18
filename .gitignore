@@ -8,3 +8,5 @@ console/memSave
 console/save
 simpleassembler/translator
 simpleassembler/1
+simplebasic/test.sa
+simplebasic/translator
