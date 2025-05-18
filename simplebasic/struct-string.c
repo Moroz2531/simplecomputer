@@ -61,8 +61,6 @@ string_array_add (String_array *str_arr, String *str)
   return new;
 }
 
-#include <stdio.h>
-
 String_array *
 string_array_get_string_index (String_array *arr, int index)
 {
@@ -156,6 +154,12 @@ string_add (String *str, char ch)
 {
   if (str == NULL)
     return -1;
+
+  if (str->size == 0)
+    {
+      if (ch == ' ' || ch == '\t')
+        return 0;
+    }
 
   if (str->size == str->capacity)
     if (string_resize (str))
