@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "struct-string.h"
+#include "var.h"
 
 enum
 {
@@ -60,20 +61,22 @@ string_array_add (String_array *str_arr, String *str)
   return new;
 }
 
+#include <stdio.h>
+
 String_array *
 string_array_get_string_index (String_array *arr, int index)
 {
   if (arr != NULL)
     {
       if (arr->index < index)
-        while (arr != NULL && arr->index < index)
+        while (arr != NULL)
           {
             if (arr->index == index)
               return arr;
             arr = arr->next;
           }
       else if (arr->index > index)
-        while (arr != NULL && arr->index > index)
+        while (arr != NULL)
           {
             if (arr->index == index)
               return arr;
@@ -108,6 +111,7 @@ string_array_free (String_array *str_arr)
     {
       temp = prev->prev;
       string_free (prev->str);
+      var_free (prev->token);
       free (prev);
       prev = temp;
     }
@@ -115,6 +119,7 @@ string_array_free (String_array *str_arr)
     {
       temp = next->next;
       string_free (next->str);
+      var_free (next->token);
       free (next);
       next = temp;
     }

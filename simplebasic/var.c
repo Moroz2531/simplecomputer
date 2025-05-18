@@ -3,12 +3,12 @@
 #include "var.h"
 
 static Var *
-var_create (int num_string, int op_1, int op_2, int command)
+var_create (int op_1, int op_2, int command)
 {
   Var *v = malloc (sizeof (Var));
   if (v != NULL)
     {
-      var_set (v, num_string, op_1, op_2, command);
+      var_set (v, op_1, op_2, command);
 
       v->next = NULL;
       v->prev = NULL;
@@ -17,23 +17,26 @@ var_create (int num_string, int op_1, int op_2, int command)
 }
 
 Var *
-var_add (Var **v, int num_string, int op_1, int op_2, int command)
+var_add (Var **v, int op_1, int op_2, int command)
 {
-  Var *v_new = var_create (num_string, op_1, op_2, command);
+  Var *v_new = var_create (op_1, op_2, command);
   if (v != NULL && *v != NULL)
     {
-      while ((*v)->next != NULL)
-        *v = (*v)->next;
-      (*v)->next = v_new;
-      v_new->prev = *v;
+      Var *v_temp = *v;
+      while (v_temp->next != NULL)
+        v_temp = v_temp->next;
+      v_temp->next = v_new;
+      v_new->prev = v_temp;
     }
+  else if (v != NULL)
+    *v = v_new;
+
   return v_new;
 }
 
 int
-var_set (Var *v, int num_string, int op_1, int op_2, int command)
+var_set (Var *v, int op_1, int op_2, int command)
 {
-  v->num_string = num_string;
   v->operand_1 = op_1;
   v->operand_2 = op_2;
   v->command = command;

@@ -76,19 +76,10 @@ get_string_array (FILE *file)
   if (str == NULL)
     return NULL;
 
-  int index;
   for (char ch = getc (file);; ch = getc (file))
     {
       if (ch == '\n' || ch == EOF)
         {
-          index = atoi (str_temp->str->string);
-          if (str_temp->prev != NULL && str_temp->prev->index >= index)
-            {
-              print_error ("error in number string", str_temp->index);
-              string_array_free (str);
-              return NULL;
-            }
-          str_temp->index = index;
           str_temp = string_array_add (str_temp, string_create ());
           if (str_temp == NULL)
             {
@@ -164,49 +155,68 @@ simpleassembler_get_code_command (int code)
 }
 
 static int
-file_load (FILE *file, Var *v)
+file_load (FILE *file, String_array *str)
 {
-  if (file == NULL || v == NULL)
+  if (file == NULL || str == NULL)
     return -1;
 
-  Var *v_temp = v;
-
-  while (v_temp != NULL)
+  for (char *command; str != NULL;)
     {
-      char *command = simpleassembler_get_code_command (v_temp->command);
-
-      fprintf (file, "%d %s %d\n", v_temp->operand_1, command,
-               v_temp->operand_2);
-      free (command);
-      v_temp = v_temp->prev;
+      if (str->token != NULL && str->str_is_read)
+        {
+          command = simpleassembler_get_code_command (str->token->command);
+          if (command == NULL)
+            return -1;
+          fprintf (file, "%d %s %d\n", str->token->operand_1, command,
+                   str->token->operand_2);
+        }
+      str = str->next;
     }
-
   return 0;
 }
 
 /* parse строки */
 static int
-string_parse (String_array *str_arr, Var **dest)
+string_parse (String_array **s_arr)
 {
-  if (str_arr == NULL || str_arr->str == NULL || str_arr->str->string == NULL)
-    return -1;
-
+  String_array *str_arr = *s_arr;
   String *str = str_arr->str;
+  if (str_arr == NULL || str_arr->str == NULL || str_arr->str->string == NULL)
+    {
+      print_error ("str_arr is null", -1);
+      return -1;
+    }
 
-  /* адреса для simplecomputer */
-  static int address_command = 0, address_operand = SIZE_MEMORY - 1;
-
-  /* адреса переменных (исключает повторения переменных в коде) */
-  static void *var['Z' - 'A' + 1] = { NULL };
+  if (str_arr->str_is_read)
+    return 0;
+  str_arr->str_is_read = 1;
 
   const char delim[] = " \t\n";
   char *ptr;
   if ((ptr = strtok (str->string, delim)) == NULL)
     return 0;
+
+  int index = atoi (ptr);
+  if (str_arr->prev != NULL && str_arr->prev->index >= index)
+    {
+      print_error ("error in number string", index);
+      return -1;
+    }
+  str_arr->index = index;
+
+  /* адреса для simplecomputer */
+  static int address_command = 0, address_operand = SIZE_MEMORY - 1;
+  if (address_command >= address_operand || address_operand <= address_command)
+    {
+      print_error ("segmentation fault", str_arr->index);
+      return -1;
+    }
+  /* адреса переменных (исключает повторения переменных в коде) */
+  static void *var['Z' - 'A' + 1] = { NULL };
+
   ptr = strtok (NULL, delim);
 
   int command = simplebasic_get_code_command (ptr), addr_operand;
-  Var *v_temp = NULL;
 
   if (command == UNKNOWN)
     return -1;
@@ -222,8 +232,6 @@ string_parse (String_array *str_arr, Var **dest)
         return -1;
       if (var_check (ptr[0]))
         return -1;
-      if (strtok (NULL, delim) != NULL)
-        return -1;
       switch (command)
         {
         case INPUT:
@@ -232,20 +240,17 @@ string_parse (String_array *str_arr, Var **dest)
           else
             addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
 
-          v_temp = var_add (dest, str_arr->index, address_command++,
-                            addr_operand, READ);
-          var[ptr[0] - 'A'] = (void *)v_temp;
+          var_add (&str_arr->token, address_command++, addr_operand, READ);
+          var[ptr[0] - 'A'] = (void *)str_arr->token;
           break;
         default:
           if (var[ptr[0] - 'A'] == NULL)
             return -1;
           addr_operand = ((Var *)var[ptr[0] - 'A'])->operand_2;
-          v_temp = var_add (dest, str_arr->index, address_command++,
-                            addr_operand, WRITE);
+          var_add (&str_arr->token, address_command++, addr_operand, WRITE);
         }
       break;
     case GOTO:
-      /* НЕОБХОДИМО ЭТОТ БЛОК РЕАЛИЗОВАТЬ */
       break;
     case IF:
       /* НЕОБХОДИМО ЭТОТ БЛОК РЕАЛИЗОВАТЬ */
@@ -254,14 +259,13 @@ string_parse (String_array *str_arr, Var **dest)
       /* НЕОБХОДИМО ЭТОТ БЛОК РЕАЛИЗОВАТЬ */
       break;
     case END:
-      if (strtok (NULL, delim) != NULL)
-        return -1;
-      v_temp = var_add (dest, str_arr->index, address_command++, 0, HALT);
+      var_add (&str_arr->token, address_command++, 0, HALT);
       break;
     default:
       return -1;
     };
-  *dest = v_temp;
+  if (strtok (NULL, delim) != NULL)
+    return -1;
   return 0;
 }
 
@@ -276,7 +280,6 @@ translator_simple_basic (char *filename)
     PRINT_ERROR ("file is not open", -1)
 
   String_array *str = get_string_array (file), *str_temp = str;
-  Var *var_for_write = NULL;
   if (str == NULL)
     {
       if (file != NULL)
@@ -285,16 +288,14 @@ translator_simple_basic (char *filename)
     }
   while (str_temp != NULL)
     {
-      if (string_parse (str_temp, &var_for_write))
+      if (string_parse (&str_temp))
         {
           print_error ("error in line", str_temp->index);
           string_array_free (str);
-          var_free (var_for_write);
           return -1;
         }
       str_temp = str_temp->next;
     }
-  string_array_free (str);
 
   /* создание файла и запись в файл */
 
@@ -303,12 +304,12 @@ translator_simple_basic (char *filename)
 
   if (file_write != NULL)
     {
-      file_load (file_write, var_for_write);
+      file_load (file_write, str);
       fclose (file_write);
     }
   if (filename_for_write != NULL)
     free (filename_for_write);
-  var_free (var_for_write);
+  string_array_free (str);
 
   return 0;
 }

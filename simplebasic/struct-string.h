@@ -12,6 +12,8 @@ typedef struct String_array
   String *str;
   int str_is_read, index;
 
+  struct Var *token;
+
   struct String_array *prev;
   struct String_array *next;
 } String_array;
