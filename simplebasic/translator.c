@@ -160,17 +160,19 @@ file_load (FILE *file, String_array *str)
   if (file == NULL || str == NULL)
     return -1;
 
-  for (char *command; str != NULL;)
+  for (char *command; str != NULL; str = str->next)
     {
-      if (str->token != NULL && str->str_is_read)
+      if (str->str_is_read == 0)
+        continue;
+
+      for (Var *token = str->token; token != NULL; token = token->next)
         {
-          command = simpleassembler_get_code_command (str->token->command);
+          command = simpleassembler_get_code_command (token->command);
           if (command == NULL)
             return -1;
-          fprintf (file, "%d %s %d\n", str->token->operand_1, command,
-                   str->token->operand_2);
+          fprintf (file, "%d %s %d\n", token->operand_1, command,
+                   token->operand_2);
         }
-      str = str->next;
     }
   return 0;
 }
@@ -304,7 +306,8 @@ translator_simple_basic (char *filename)
 
   if (file_write != NULL)
     {
-      file_load (file_write, str);
+      if (file_load (file_write, str))
+        print_error ("file is not load", -1);
       fclose (file_write);
     }
   if (filename_for_write != NULL)
